@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LP Audit — Impuestos</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+  :root {
+    --bg:#06090f; --surface:#0c1220; --surface2:#101828;
+    --border:#162040; --border-light:#0f1828;
+    --text:#e8e8f0; --text-muted:#7888a0; --text-dim:#3a4a66;
+    --green:#00d084; --green-dim:rgba(0,208,132,.10);
+    --red:#ff4757;   --red-dim:rgba(255,71,87,.10);
+    --amber:#ffb020; --amber-dim:rgba(255,176,32,.10);
+    --blue:#4a7fd4;  --blue-dim:rgba(74,127,212,0.12);
+    --purple:#a855f7;--purple-dim:rgba(168,85,247,.10);
+    --mono:'DM Mono',monospace; --sans:'DM Sans',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);min-height:100vh;}
+
+  header{display:flex;align-items:center;gap:14px;padding:18px 32px;border-bottom:1px solid var(--border);background:var(--surface);}
+  .header-sep{width:1px;height:24px;background:var(--border);}
+  .header-title{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);}
+  .header-badge{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text-muted);background:var(--surface2);padding:4px 10px;border-radius:4px;border:1px solid var(--border);}
+
+  main{max-width:1200px;margin:0 auto;padding:40px 32px 80px;}
+  .page-title{font-size:28px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px;}
+  .page-subtitle{font-size:14px;color:var(--text-muted);margin-bottom:36px;}
+
+  .upload-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:40px;}
+  .upload-card{background:var(--surface);border:1px dashed var(--border);border-radius:10px;padding:24px 20px;cursor:pointer;transition:all .2s;position:relative;text-align:center;}
+  .upload-card:hover{border-color:var(--blue);background:var(--blue-dim);}
+  .upload-card.loaded{border-style:solid;border-color:var(--green);background:var(--green-dim);cursor:default;}
+  .upload-card.loaded:hover{background:var(--green-dim);border-color:var(--green);}
+  .upload-card input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+  .upload-card.loaded input[type="file"]{pointer-events:none;}
+  .upload-icon{font-size:28px;margin-bottom:10px;}
+  .upload-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:4px;}
+  .upload-name{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:8px;}
+  .upload-status{font-size:12px;font-weight:600;color:var(--text-dim);}
+  .upload-card.loaded .upload-status{color:var(--green);}
+  .upload-rows{font-family:var(--mono);font-size:11px;color:var(--text-muted);margin-top:4px;}
+
+  .period-bar{display:flex;align-items:center;gap:16px;padding:16px 20px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:32px;}
+  .period-bar label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);white-space:nowrap;}
+  .period-selects{display:flex;gap:10px;flex-wrap:wrap;}
+  .period-select{background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13px;padding:7px 12px;border-radius:6px;cursor:pointer;outline:none;}
+  .period-select:focus{border-color:var(--blue);}
+  .btn-run{margin-left:auto;background:var(--blue);color:#fff;border:none;font-family:var(--sans);font-size:13px;font-weight:700;letter-spacing:.04em;padding:9px 22px;border-radius:6px;cursor:pointer;transition:opacity .2s;}
+  .btn-run:hover{opacity:.88;}
+  .btn-run:disabled{opacity:.35;cursor:not-allowed;}
+
+  #loading{display:none;text-align:center;padding:40px;color:var(--text-muted);font-size:14px;}
+  .spinner{display:inline-block;width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;margin-right:10px;vertical-align:middle;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  #results{display:none;}
+  .results-header{display:flex;align-items:baseline;gap:12px;margin-bottom:24px;}
+  .results-title{font-size:18px;font-weight:800;}
+  .results-period{font-family:var(--mono);font-size:12px;color:var(--text-muted);}
+
+  .summary-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px;}
+  .summary-cell{background:var(--surface);padding:18px 20px;}
+  .summary-cell-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin-bottom:6px;}
+  .summary-cell-value{font-family:var(--mono);font-size:20px;font-weight:500;}
+  .summary-cell-sub{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:3px;}
+
+  .cuadre-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;}
+  .cuadre-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+  .cuadre-block-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);}
+  .cuadre-block-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);}
+  .cuadre-cuenta{font-family:var(--mono);font-size:11px;color:var(--text-dim);}
+  .cuadre-row{display:flex;align-items:center;justify-content:space-between;padding:11px 20px;border-bottom:1px solid var(--border-light);}
+  .cuadre-row-label{font-size:13px;color:var(--text-muted);}
+  .cuadre-row-source{font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-top:2px;}
+  .cuadre-row-amount{font-family:var(--mono);font-size:15px;font-weight:500;}
+  .cuadre-diff-row{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:var(--surface2);border-top:1px solid var(--border);}
+  .cuadre-diff-label{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
+  .cuadre-diff-amount{font-family:var(--mono);font-size:18px;font-weight:500;}
+  .ok .cuadre-diff-label,.ok .cuadre-diff-amount{color:var(--green);}
+  .warn .cuadre-diff-label,.warn .cuadre-diff-amount{color:var(--amber);}
+  .error .cuadre-diff-label,.error .cuadre-diff-amount{color:var(--red);}
+  .ok{border-bottom:3px solid var(--green);}
+  .warn{border-bottom:3px solid var(--amber);}
+  .error{border-bottom:3px solid var(--red);}
+
+  .irpf-block{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:24px;}
+  .irpf-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);}
+  .irpf-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);}
+  .irpf-rows{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border-light);}
+  .irpf-cell{background:var(--surface);padding:16px 20px;}
+  .irpf-cell-label{font-size:12px;color:var(--text-muted);margin-bottom:3px;}
+  .irpf-cell-source{font-family:var(--mono);font-size:10px;color:var(--text-dim);margin-bottom:8px;}
+  .irpf-cell-value{font-family:var(--mono);font-size:20px;font-weight:500;}
+
+  .export-banner{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 24px;margin-bottom:28px;}
+  .export-title{font-size:14px;font-weight:700;margin-bottom:3px;}
+  .export-sub{font-size:12px;color:var(--text-muted);}
+  .btn-download{display:inline-flex;align-items:center;gap:8px;background:var(--green);color:#000;border:none;font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.04em;padding:10px 20px;border-radius:6px;cursor:pointer;transition:opacity .2s;text-transform:uppercase;white-space:nowrap;}
+  .btn-download:hover{opacity:.88;}
+
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:0;margin-top:36px;}
+  .section-title{font-size:15px;font-weight:700;}
+
+  .tabs{display:flex;gap:0;border-bottom:1px solid var(--border);overflow-x:auto;}
+  .tab{padding:10px 16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;user-select:none;white-space:nowrap;}
+  .tab:hover{color:var(--text);}
+  .tab.active{color:var(--blue);border-bottom-color:var(--blue);}
+  .tab-count{display:inline-block;margin-left:5px;padding:1px 6px;border-radius:10px;background:var(--surface2);font-size:10px;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  .table-wrap{overflow-x:auto;border:1px solid var(--border);border-top:none;border-radius:0 0 10px 10px;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  thead th{background:var(--surface2);padding:9px 13px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);border-bottom:1px solid var(--border);white-space:nowrap;}
+  tbody tr{border-bottom:1px solid var(--border-light);}
+  tbody tr:last-child{border-bottom:none;}
+  tbody tr:hover{background:rgba(255,255,255,.02);}
+  tbody td{padding:9px 13px;color:var(--text);vertical-align:middle;}
+  .mono{font-family:var(--mono);}
+  .muted{color:var(--text-muted);}
+  .c-red{color:var(--red);}
+  .c-amber{color:var(--amber);}
+  .pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;}
+  .pill-warn{background:var(--amber-dim);color:var(--amber);}
+  .pill-error{background:var(--red-dim);color:var(--red);}
+
+  .clean-block{background:var(--surface);border:1px solid var(--green);border-radius:12px;padding:32px;text-align:center;color:var(--green);margin-bottom:24px;}
+  .clean-icon{font-size:36px;margin-bottom:10px;}
+  .clean-text{font-size:15px;font-weight:700;}
+  .clean-sub{font-size:13px;color:var(--text-muted);margin-top:6px;}
+
+  @media(max-width:800px){
+    .upload-grid,.cuadre-grid{grid-template-columns:1fr;}
+    .summary-bar,.irpf-rows{grid-template-columns:1fr 1fr;}
+    main{padding:24px 16px 60px;}
+    .export-banner{flex-direction:column;gap:14px;}
+  }
+</style>
+</head>
+<body>
+
+<div style="background:#0c1220;border-bottom:1px solid #162040;padding:11px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0;width:100%;box-sizing:border-box;"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4a7fd4;font-weight:500;">Impuestos</span><span style="font-family:'DM Mono',monospace;font-size:9px;color:#3a4a66;margin-left:4px;">· Legal Pigeon Auditoría Interna</span></div>
+
+<main>
+  <div class="page-title">Cuadre de Impuestos</div>
+  <div class="page-subtitle">IVA (Mod. 303) e IRPF (Mod. 111) — cruza facturas emitidas y recibidas con cuentas contables 472 · 477 · 4751</div>
+
+  <div class="upload-grid">
+    <div class="upload-card" id="card-ingresos">
+      <input type="file" accept=".xlsx,.xls" onchange="loadFile('ingresos',this)">
+      <div class="upload-icon">📄</div>
+      <div class="upload-label">Facturas Emitidas</div>
+      <div class="upload-name">Ingresos_*.xlsx</div>
+      <div class="upload-status" id="status-ingresos">Arrastra o haz clic</div>
+      <div class="upload-rows" id="rows-ingresos"></div>
+    </div>
+    <div class="upload-card" id="card-compras">
+      <input type="file" accept=".xlsx,.xls" onchange="loadFile('compras',this)">
+      <div class="upload-icon">📥</div>
+      <div class="upload-label">Facturas Recibidas</div>
+      <div class="upload-name">Compras_*.xlsx</div>
+      <div class="upload-status" id="status-compras">Arrastra o haz clic</div>
+      <div class="upload-rows" id="rows-compras"></div>
+    </div>
+    <div class="upload-card" id="card-libro">
+      <input type="file" accept=".xlsx,.xls" onchange="loadFile('libro',this)">
+      <div class="upload-icon">📊</div>
+      <div class="upload-label">Libro Diario</div>
+      <div class="upload-name">Libro_diario_*.xlsx</div>
+      <div class="upload-status" id="status-libro">Arrastra o haz clic</div>
+      <div class="upload-rows" id="rows-libro"></div>
+    </div>
+  </div>
+
+  <div class="period-bar">
+    <label>Trimestre</label>
+    <div class="period-selects">
+      <select class="period-select" id="selTrimestre">
+        <option value="1">T1 — Ene · Feb · Mar</option>
+        <option value="2">T2 — Abr · May · Jun</option>
+        <option value="3">T3 — Jul · Ago · Sep</option>
+        <option value="4">T4 — Oct · Nov · Dic</option>
+      </select>
+      <select class="period-select" id="selAnyo">
+        <option value="2026">2026</option>
+        <option value="2025">2025</option>
+        <option value="2024">2024</option>
+      </select>
+    </div>
+    <button class="btn-run" id="btnRun" onclick="runAudit()" disabled>Analizar</button>
+  </div>
+
+  <div id="loading"><span class="spinner"></span>Analizando y cruzando datos…</div>
+
+  <div id="results">
+    <div class="results-header">
+      <div class="results-title">Resultado del Cuadre</div>
+      <div class="results-period" id="resultsPeriod"></div>
+    </div>
+
+    <div class="summary-bar">
+      <div class="summary-cell">
+        <div class="summary-cell-label">IVA Repercutido (477)</div>
+        <div class="summary-cell-value" id="sumIvaRep">—</div>
+        <div class="summary-cell-sub">Facturas emitidas</div>
+      </div>
+      <div class="summary-cell">
+        <div class="summary-cell-label">IVA Soportado (472)</div>
+        <div class="summary-cell-value" id="sumIvaSop">—</div>
+        <div class="summary-cell-sub">Facturas recibidas</div>
+      </div>
+      <div class="summary-cell">
+        <div class="summary-cell-label">IVA Neto a ingresar</div>
+        <div class="summary-cell-value" id="sumIvaNeto">—</div>
+        <div class="summary-cell-sub">Repercutido − Soportado</div>
+      </div>
+      <div class="summary-cell">
+        <div class="summary-cell-label">IRPF Retenido (4751)</div>
+        <div class="summary-cell-value" id="sumIrpf">—</div>
+        <div class="summary-cell-sub">Retenciones en compras</div>
+      </div>
+    </div>
+
+    <div class="cuadre-grid">
+      <div class="cuadre-block" id="block477">
+        <div class="cuadre-block-header">
+          <div class="cuadre-block-title">IVA Repercutido · Mod. 303 ventas</div>
+          <div class="cuadre-cuenta">Cta. 477</div>
+        </div>
+        <div class="cuadre-row">
+          <div><div class="cuadre-row-label">Suma IVA facturas emitidas</div><div class="cuadre-row-source">Ingresos · col. IVA · excluye Anuladas</div></div>
+          <div class="cuadre-row-amount" id="val477fact">—</div>
+        </div>
+        <div class="cuadre-row">
+          <div><div class="cuadre-row-label">Saldo cuenta 477 (Haber)</div><div class="cuadre-row-source">Libro Diario · cuentas 477xxxxx</div></div>
+          <div class="cuadre-row-amount" id="val477libro">—</div>
+        </div>
+        <div class="cuadre-diff-row" id="diff477row">
+          <div class="cuadre-diff-label" id="diff477label">Diferencia</div>
+          <div class="cuadre-diff-amount" id="diff477val">—</div>
+        </div>
+      </div>
+
+      <div class="cuadre-block" id="block472">
+        <div class="cuadre-block-header">
+          <div class="cuadre-block-title">IVA Soportado · Mod. 303 compras</div>
+          <div class="cuadre-cuenta">Cta. 472</div>
+        </div>
+        <div class="cuadre-row">
+          <div><div class="cuadre-row-label">Suma IVA facturas recibidas</div><div class="cuadre-row-source">Compras · col. IVA · excluye Anuladas</div></div>
+          <div class="cuadre-row-amount" id="val472fact">—</div>
+        </div>
+        <div class="cuadre-row">
+          <div><div class="cuadre-row-label">Saldo cuenta 472 (Debe)</div><div class="cuadre-row-source">Libro Diario · cuentas 472xxxxx</div></div>
+          <div class="cuadre-row-amount" id="val472libro">—</div>
+        </div>
+        <div class="cuadre-diff-row" id="diff472row">
+          <div class="cuadre-diff-label" id="diff472label">Diferencia</div>
+          <div class="cuadre-diff-amount" id="diff472val">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="irpf-block">
+      <div class="irpf-header">
+        <div class="irpf-title">IRPF Retenido · Modelo 111 (retenciones practicadas a proveedores)</div>
+        <div class="cuadre-cuenta">Cta. 4751</div>
+      </div>
+      <div class="irpf-rows">
+        <div class="irpf-cell">
+          <div class="irpf-cell-label">Retenciones en facturas recibidas</div>
+          <div class="irpf-cell-source">Compras · col. Retención · valor abs.</div>
+          <div class="irpf-cell-value" id="val4751fact">—</div>
+        </div>
+        <div class="irpf-cell">
+          <div class="irpf-cell-label">Saldo cuenta 4751 (Haber)</div>
+          <div class="irpf-cell-source">Libro Diario · cuentas 4751xxxxx</div>
+          <div class="irpf-cell-value" id="val4751libro">—</div>
+        </div>
+        <div class="irpf-cell" id="irpfDiffCell">
+          <div class="irpf-cell-label" id="irpfDiffLabel" style="color:var(--text-muted)">Diferencia</div>
+          <div class="irpf-cell-source">Facturas vs. contabilidad</div>
+          <div class="irpf-cell-value" id="val4751diff">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="export-banner" id="exportBanner" style="display:none">
+      <div>
+        <div class="export-title">Informe de diferencias disponible</div>
+        <div class="export-sub" id="exportSub"></div>
+      </div>
+      <button class="btn-download" onclick="downloadExcel()">⬇ Descargar informe Excel</button>
+    </div>
+
+    <div id="incidencias-container"></div>
+  </div>
+</main>
+
+<script>
+const raw = {ingresos:null, compras:null, libro:null};
+let auditResult = null;
+
+function loadFile(type, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(e.target.result, {type:'binary', cellDates:true});
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+    raw[type] = {headers: rows[4], rows: rows.slice(5).filter(r => r.some(c => c !== null)), filename: file.name};
+    document.getElementById('card-'+type).classList.add('loaded');
+    document.getElementById('status-'+type).textContent = '✓ ' + file.name.replace(/LEGAL_PIGEON_S_L__-_/,'').slice(0,30);
+    document.getElementById('rows-'+type).textContent = raw[type].rows.length + ' filas cargadas';
+    document.getElementById('btnRun').disabled = !(raw.ingresos && raw.compras && raw.libro);
+  };
+  reader.readAsBinaryString(file);
+}
+
+const fmt = n => new Intl.NumberFormat('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n)+' €';
+const r2 = n => Math.round(n*100)/100;
+
+function getDate(v) {
+  if (!v) return null;
+  if (v instanceof Date) return v;
+  if (typeof v==='number') return new Date(Math.round((v-25569)*86400*1000));
+  if (typeof v==='string') { const p=v.split(/[\/\-]/); if(p.length===3) return p[0].length===4?new Date(+p[0],+p[1]-1,+p[2]):new Date(+p[2],+p[1]-1,+p[0]); }
+  return null;
+}
+const inMonths = (v, months) => { const d=getDate(v); return d?months.includes(d.getMonth()+1):false; };
+const fmtDate = v => { const d=getDate(v); return d?d.toLocaleDateString('es-ES'):''; };
+const ci = (h, names) => { for (const n of names) { const i=h.findIndex(x=>x&&x.toString().toLowerCase().includes(n.toLowerCase())); if(i>=0)return i; } return -1; };
+const clsOf = diff => Math.abs(diff)<0.05?'ok':Math.abs(diff)<5?'warn':'error';
+
+function runAudit() {
+  document.getElementById('loading').style.display='block';
+  document.getElementById('results').style.display='none';
+  setTimeout(_audit, 60);
+}
+
+function _audit() {
+  const tri=+document.getElementById('selTrimestre').value;
+  const anyo=+document.getElementById('selAnyo').value;
+  const months={1:[1,2,3],2:[4,5,6],3:[7,8,9],4:[10,11,12]}[tri];
+  const mN=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const label=`T${tri} ${anyo} · ${months.map(m=>mN[m-1]).join(' · ')}`;
+
+  // col indices
+  const iH=raw.ingresos.headers, cH=raw.compras.headers, lH=raw.libro.headers;
+  const I={date:ci(iH,['Fecha operación','Fecha']),num:1,iva:ci(iH,['IVA']),ret:ci(iH,['Retención']),est:ci(iH,['Estado']),cli:ci(iH,['Cliente']),sub:ci(iH,['Subtotal']),tot:ci(iH,['Total'])};
+  const C={date:ci(cH,['Fecha emisión','Fecha']),num:1,iva:ci(cH,['IVA']),ret:ci(cH,['Retención']),est:ci(cH,['Estado']),prov:ci(cH,['Proveedor']),sub:ci(cH,['Subtotal']),tot:ci(cH,['Total'])};
+  const L={date:ci(lH,['Fecha']),cuenta:ci(lH,['Cuenta']),debe:ci(lH,['Debe']),haber:ci(lH,['Haber']),desc:ci(lH,['Descripción']),doc:ci(lH,['Documento']),nombre:ci(lH,['Nombre']),asiento:ci(lH,['Asiento'])};
+
+  // build libro maps
+  const lib477={}, lib472={}, lib4751={};
+  let t477=0, t472=0, t4751=0;
+  for (const row of raw.libro.rows) {
+    if (!inMonths(row[L.date], months)) continue;
+    const cta=String(row[L.cuenta]??''), doc=String(row[L.doc]??'').trim();
+    const debe=row[L.debe]||0, haber=row[L.haber]||0;
+    const e={doc, asiento:row[L.asiento], desc:row[L.desc], fecha:fmtDate(row[L.date])};
+    if (cta.startsWith('477')&&haber>0) { t477+=haber; (lib477[doc]=lib477[doc]||[]).push({...e,iva:r2(haber)}); }
+    if (cta.startsWith('472')&&debe>0)  { t472+=debe;  (lib472[doc]=lib472[doc]||[]).push({...e,iva:r2(debe)}); }
+    if (cta.startsWith('4751')&&haber>0){ t4751+=haber;(lib4751[doc]=lib4751[doc]||[]).push({...e,iva:r2(haber)}); }
+  }
+
+  // clone for orphan tracking
+  const a477=JSON.parse(JSON.stringify(lib477));
+  const a472=JSON.parse(JSON.stringify(lib472));
+  const a4751=JSON.parse(JSON.stringify(lib4751));
+
+  let ivaRep=0;
+  const no477=[], diff477=[], orph477=[];
+
+  for (const row of raw.ingresos.rows) {
+    if (String(row[I.est]??'')==='Anulado') continue;
+    if (!inMonths(row[I.date],months)) continue;
+    const num=String(row[I.num]??'').trim(), iva=r2(row[I.iva]||0);
+    ivaRep+=iva;
+    if (iva===0) continue;
+    const entries=a477[num];
+    if (!entries||entries.length===0) {
+      no477.push({num,iva,fecha:fmtDate(row[I.date]),cliente:row[I.cli],subtotal:row[I.sub],total:row[I.tot],estado:row[I.est]});
+    } else {
+      const idx=entries.findIndex(e=>Math.abs(e.iva-iva)<0.05);
+      if (idx>=0) entries.splice(idx,1);
+      else {
+        const sumLib=r2(entries.reduce((s,e)=>s+e.iva,0));
+        diff477.push({num,iva_fact:iva,iva_lib:sumLib,diff:r2(iva-sumLib),fecha:fmtDate(row[I.date]),cliente:row[I.cli],asiento:entries[0].asiento});
+        delete a477[num];
+      }
+    }
+  }
+  for (const [doc,entries] of Object.entries(a477)) for (const e of entries) orph477.push({doc,iva:e.iva,asiento:e.asiento,desc:e.desc,fecha:e.fecha});
+
+  let ivaSop=0, irpfComp=0;
+  const no472=[], diffIva472=[], orph472=[], no4751=[], orph4751=[];
+
+  for (const row of raw.compras.rows) {
+    if (String(row[C.est]??'')==='Anulado') continue;
+    if (!inMonths(row[C.date],months)) continue;
+    const num=String(row[C.num]??'').trim(), iva=r2(row[C.iva]||0), ret=r2(Math.abs(row[C.ret]||0));
+    ivaSop+=iva; irpfComp+=ret;
+
+    if (iva>0) {
+      const entries=a472[num];
+      if (!entries||entries.length===0) {
+        no472.push({num,iva,ret,fecha:fmtDate(row[C.date]),proveedor:row[C.prov],subtotal:row[C.sub],total:row[C.tot],estado:row[C.est]});
+      } else {
+        const idx=entries.findIndex(e=>Math.abs(e.iva-iva)<0.05);
+        if (idx>=0) entries.splice(idx,1);
+        else { const sumLib=r2(entries.reduce((s,e)=>s+e.iva,0)); diffIva472.push({num,iva_fact:iva,iva_lib:sumLib,diff:r2(iva-sumLib),fecha:fmtDate(row[C.date]),proveedor:row[C.prov],asiento:entries[0].asiento}); delete a472[num]; }
+      }
+    }
+
+    if (ret>0) {
+      const entries=a4751[num];
+      if (!entries||entries.length===0) {
+        no4751.push({num,ret,iva,fecha:fmtDate(row[C.date]),proveedor:row[C.prov],subtotal:row[C.sub],estado:row[C.est]});
+      } else {
+        const idx=entries.findIndex(e=>Math.abs(e.iva-ret)<0.05);
+        if (idx>=0) entries.splice(idx,1);
+        else { delete a4751[num]; }
+      }
+    }
+  }
+  for (const [doc,entries] of Object.entries(a472)) for (const e of entries) orph472.push({doc,iva:e.iva,asiento:e.asiento,desc:e.desc,fecha:e.fecha});
+  for (const [doc,entries] of Object.entries(a4751)) for (const e of entries) orph4751.push({doc,ret:e.iva,asiento:e.asiento,desc:e.desc,fecha:e.fecha});
+
+  const d477=r2(ivaRep-t477), d472=r2(ivaSop-t472), d4751=r2(irpfComp-t4751);
+
+  auditResult = {label,tri,anyo,ivaRep,ivaSop,irpfComp,t477,t472,t4751,d477,d472,d4751,no477,diff477,orph477,no472,diffIva472,orph472,no4751,orph4751};
+  render(auditResult);
+}
+
+function render(r) {
+  document.getElementById('headerPeriod').textContent=r.label;
+  document.getElementById('resultsPeriod').textContent=r.label;
+  document.getElementById('sumIvaRep').textContent=fmt(r.ivaRep);
+  document.getElementById('sumIvaSop').textContent=fmt(r.ivaSop);
+  document.getElementById('sumIvaNeto').textContent=fmt(r.ivaRep-r.ivaSop);
+  document.getElementById('sumIrpf').textContent=fmt(r.irpfComp);
+
+  const setBlock=(blk,drow,dlbl,dval,diff)=>{
+    const cls=clsOf(diff);
+    document.getElementById(blk).className='cuadre-block '+cls;
+    document.getElementById(drow).className='cuadre-diff-row '+cls;
+    document.getElementById(dlbl).textContent=cls==='ok'?'✓ Cuadra':'⚠ Diferencia';
+    document.getElementById(dval).textContent=fmt(diff);
+  };
+  document.getElementById('val477fact').textContent=fmt(r.ivaRep);
+  document.getElementById('val477libro').textContent=fmt(r.t477);
+  setBlock('block477','diff477row','diff477label','diff477val',r.d477);
+  document.getElementById('val472fact').textContent=fmt(r.ivaSop);
+  document.getElementById('val472libro').textContent=fmt(r.t472);
+  setBlock('block472','diff472row','diff472label','diff472val',r.d472);
+
+  document.getElementById('val4751fact').textContent=fmt(r.irpfComp);
+  document.getElementById('val4751libro').textContent=fmt(r.t4751);
+  const c4751=clsOf(r.d4751);
+  const col={ok:'var(--green)',warn:'var(--amber)',error:'var(--red)'}[c4751];
+  document.getElementById('irpfDiffLabel').textContent=c4751==='ok'?'✓ Cuadra':'⚠ Diferencia';
+  document.getElementById('irpfDiffLabel').style.color=col;
+  document.getElementById('val4751diff').textContent=fmt(r.d4751);
+  document.getElementById('val4751diff').style.color=col;
+  document.getElementById('irpfDiffCell').style.borderLeft=`3px solid ${col}`;
+
+  const totalInc=r.no477.length+r.diff477.length+r.orph477.length+r.no472.length+r.diffIva472.length+r.orph472.length+r.no4751.length+r.orph4751.length;
+  const container=document.getElementById('incidencias-container');
+  const banner=document.getElementById('exportBanner');
+
+  if (totalInc===0) {
+    banner.style.display='none';
+    container.innerHTML=`<div class="clean-block"><div class="clean-icon">✅</div><div class="clean-text">Todo cuadra — Matching 1:1 completado sin diferencias</div><div class="clean-sub">Cada factura tiene su asiento contable con el importe correcto de IVA e IRPF</div></div>`;
+  } else {
+    banner.style.display='flex';
+    const parts=[r.no477.length&&`${r.no477.length} emitidas sin asiento 477`,r.orph477.length&&`${r.orph477.length} asientos 477 huérfanos`,r.no472.length&&`${r.no472.length} recibidas sin asiento 472`,r.no4751.length&&`${r.no4751.length} retenciones sin 4751`].filter(Boolean);
+    document.getElementById('exportSub').textContent=`${totalInc} incidencias · ${parts.join(' · ')}`;
+    container.innerHTML=buildTabs(r);
+    const first=container.querySelector('.tab[data-panel]');
+    if (first) activateTab(first.dataset.panel);
+  }
+
+  document.getElementById('loading').style.display='none';
+  document.getElementById('results').style.display='block';
+  document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function buildTabs(r) {
+  const tabs=[
+    {id:'t477no',   label:'Emitidas sin 477',   count:r.no477.length},
+    {id:'t477diff', label:'477 IVA diferente',   count:r.diff477.length},
+    {id:'t477orph', label:'477 sin factura',     count:r.orph477.length},
+    {id:'t472no',   label:'Recibidas sin 472',   count:r.no472.length},
+    {id:'t472diff', label:'472 IVA diferente',   count:r.diffIva472.length},
+    {id:'t472orph', label:'472 sin factura',     count:r.orph472.length},
+    {id:'t4751no',  label:'Ret. sin 4751',       count:r.no4751.length},
+    {id:'t4751orph',label:'4751 sin factura',    count:r.orph4751.length},
+  ].filter(t=>t.count>0);
+
+  const tabsH=tabs.map(t=>`<div class="tab" data-panel="${t.id}" onclick="activateTab('${t.id}')">${t.label}<span class="tab-count">${t.count}</span></div>`).join('');
+
+  const tblWrap=(cols,rows)=>`<div class="table-wrap"><table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  const panels={
+    t477no:   !r.no477.length   ? '' : tblWrap(['Nº Factura','Fecha','Cliente','Subtotal','IVA Factura','Total','Estado'], r.no477.map(x=>`<tr><td class="mono">${x.num}</td><td class="mono muted">${x.fecha}</td><td>${x.cliente||''}</td><td class="mono">${x.subtotal!=null?fmt(x.subtotal):''}</td><td class="mono c-red">${fmt(x.iva)}</td><td class="mono">${x.total!=null?fmt(x.total):''}</td><td><span class="pill pill-warn">${x.estado||''}</span></td></tr>`).join('')),
+    t477diff: !r.diff477.length ? '' : tblWrap(['Nº Factura','Fecha','Cliente','IVA Factura','IVA Contab.','Diferencia','Asiento'], r.diff477.map(x=>`<tr><td class="mono">${x.num}</td><td class="mono muted">${x.fecha}</td><td>${x.cliente||''}</td><td class="mono">${fmt(x.iva_fact)}</td><td class="mono">${fmt(x.iva_lib)}</td><td class="mono c-red">${fmt(x.diff)}</td><td class="mono muted">${x.asiento||''}</td></tr>`).join('')),
+    t477orph: !r.orph477.length ? '' : tblWrap(['Documento','Fecha','Asiento','IVA Contab.','Descripción'], r.orph477.map(x=>`<tr><td class="mono">${x.doc}</td><td class="mono muted">${x.fecha}</td><td class="mono muted">${x.asiento||''}</td><td class="mono c-amber">${fmt(x.iva)}</td><td class="muted" style="font-size:11px">${x.desc||''}</td></tr>`).join('')),
+    t472no:   !r.no472.length   ? '' : tblWrap(['Nº Factura','Fecha','Proveedor','Subtotal','IVA Factura','Retención','Estado'], r.no472.map(x=>`<tr><td class="mono">${x.num}</td><td class="mono muted">${x.fecha}</td><td>${x.proveedor||''}</td><td class="mono">${x.subtotal!=null?fmt(x.subtotal):''}</td><td class="mono c-red">${fmt(x.iva)}</td><td class="mono">${x.ret?fmt(x.ret):''}</td><td><span class="pill pill-warn">${x.estado||''}</span></td></tr>`).join('')),
+    t472diff: !r.diffIva472.length ? '' : tblWrap(['Nº Factura','Fecha','Proveedor','IVA Factura','IVA Contab.','Diferencia','Asiento'], r.diffIva472.map(x=>`<tr><td class="mono">${x.num}</td><td class="mono muted">${x.fecha}</td><td>${x.proveedor||''}</td><td class="mono">${fmt(x.iva_fact)}</td><td class="mono">${fmt(x.iva_lib)}</td><td class="mono c-red">${fmt(x.diff)}</td><td class="mono muted">${x.asiento||''}</td></tr>`).join('')),
+    t472orph: !r.orph472.length ? '' : tblWrap(['Documento','Fecha','Asiento','IVA Contab.','Descripción'], r.orph472.map(x=>`<tr><td class="mono">${x.doc}</td><td class="mono muted">${x.fecha}</td><td class="mono muted">${x.asiento||''}</td><td class="mono c-amber">${fmt(x.iva)}</td><td class="muted" style="font-size:11px">${x.desc||''}</td></tr>`).join('')),
+    t4751no:  !r.no4751.length  ? '' : tblWrap(['Nº Factura','Fecha','Proveedor','Subtotal','IVA','Retención sin asiento'], r.no4751.map(x=>`<tr><td class="mono">${x.num}</td><td class="mono muted">${x.fecha}</td><td>${x.proveedor||''}</td><td class="mono">${x.subtotal!=null?fmt(x.subtotal):''}</td><td class="mono muted">${fmt(x.iva)}</td><td class="mono c-red">${fmt(x.ret)}</td></tr>`).join('')),
+    t4751orph:!r.orph4751.length? '' : tblWrap(['Documento','Fecha','Asiento','Retención Contab.','Descripción'], r.orph4751.map(x=>`<tr><td class="mono">${x.doc}</td><td class="mono muted">${x.fecha}</td><td class="mono muted">${x.asiento||''}</td><td class="mono c-amber">${fmt(x.ret)}</td><td class="muted" style="font-size:11px">${x.desc||''}</td></tr>`).join('')),
+  };
+
+  const panelsH=tabs.map(t=>`<div class="tab-panel" id="${t.id}">${panels[t.id]}</div>`).join('');
+  return `<div style="margin-top:36px"><div style="font-size:15px;font-weight:700;margin-bottom:0">Detalle de Incidencias</div></div><div class="tabs">${tabsH}</div><div>${panelsH}</div>`;
+}
+
+function activateTab(id) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.panel===id));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id===id));
+}
+
+function downloadExcel() {
+  const r=auditResult; if(!r) return;
+  const wb=XLSX.utils.book_new();
+  const sheet=(name,data)=>{ const ws=XLSX.utils.aoa_to_sheet(data); XLSX.utils.book_append_sheet(wb,ws,name); };
+
+  sheet('Resumen',[
+    ['LP AUDIT — Cuadre de Impuestos'],
+    [`Período: ${r.label}`],[''],
+    ['CONCEPTO','FACTURAS','CONTABILIDAD','DIFERENCIA'],
+    ['IVA Repercutido (Cta. 477)',r.ivaRep,r.t477,r.d477],
+    ['IVA Soportado (Cta. 472)',r.ivaSop,r.t472,r.d472],
+    ['IRPF Retenido (Cta. 4751)',r.irpfComp,r.t4751,r.d4751],[''],
+    ['IVA Neto a ingresar (303)',r.ivaRep-r.ivaSop,'',''],[''],
+    ['INCIDENCIAS','CANTIDAD'],
+    ['Emitidas sin asiento 477',r.no477.length],
+    ['477 con IVA diferente',r.diff477.length],
+    ['Asientos 477 sin factura',r.orph477.length],
+    ['Recibidas sin asiento 472',r.no472.length],
+    ['472 con IVA diferente',r.diffIva472.length],
+    ['Asientos 472 sin factura',r.orph472.length],
+    ['Retenciones sin asiento 4751',r.no4751.length],
+    ['Asientos 4751 sin factura',r.orph4751.length],
+  ]);
+
+  if (r.no477.length) sheet('Emit. sin 477', [['Nº Factura','Fecha','Cliente','Subtotal','IVA Factura','Total','Estado'],...r.no477.map(x=>[x.num,x.fecha,x.cliente,x.subtotal,x.iva,x.total,x.estado])]);
+  if (r.diff477.length) sheet('477 IVA diferente', [['Nº Factura','Fecha','Cliente','IVA Factura','IVA Contab.','Diferencia','Asiento'],...r.diff477.map(x=>[x.num,x.fecha,x.cliente,x.iva_fact,x.iva_lib,x.diff,x.asiento])]);
+  if (r.orph477.length) sheet('477 sin factura', [['Documento','Fecha','Asiento','IVA Contab.','Descripción'],...r.orph477.map(x=>[x.doc,x.fecha,x.asiento,x.iva,x.desc])]);
+  if (r.no472.length) sheet('Recib. sin 472', [['Nº Factura','Fecha','Proveedor','Subtotal','IVA Factura','Retención','Estado'],...r.no472.map(x=>[x.num,x.fecha,x.proveedor,x.subtotal,x.iva,x.ret,x.estado])]);
+  if (r.diffIva472.length) sheet('472 IVA diferente', [['Nº Factura','Fecha','Proveedor','IVA Factura','IVA Contab.','Diferencia','Asiento'],...r.diffIva472.map(x=>[x.num,x.fecha,x.proveedor,x.iva_fact,x.iva_lib,x.diff,x.asiento])]);
+  if (r.orph472.length) sheet('472 sin factura', [['Documento','Fecha','Asiento','IVA Contab.','Descripción'],...r.orph472.map(x=>[x.doc,x.fecha,x.asiento,x.iva,x.desc])]);
+  if (r.no4751.length) sheet('Ret. sin 4751', [['Nº Factura','Fecha','Proveedor','Subtotal','IVA','Retención sin asiento'],...r.no4751.map(x=>[x.num,x.fecha,x.proveedor,x.subtotal,x.iva,x.ret])]);
+  if (r.orph4751.length) sheet('4751 sin factura', [['Documento','Fecha','Asiento','Retención Contab.','Descripción'],...r.orph4751.map(x=>[x.doc,x.fecha,x.asiento,x.ret,x.desc])]);
+
+  XLSX.writeFile(wb, `LPAudit_Impuestos_T${r.tri}_${r.anyo}.xlsx`);
+}
+</script>
+</body>
+</html>

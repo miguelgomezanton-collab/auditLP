@@ -118,6 +118,10 @@
         <span class="nav-icon">≡</span> Cuentas Contables
         <span class="nav-dot"></span>
       </div>
+      <div class="nav-item" onclick="showPanel('impuestos', this)">
+        <span class="nav-icon">◉</span> Impuestos
+        <span class="nav-dot"></span>
+      </div>
       <div class="nav-item" onclick="showPanel('nominas', this)">
         <span class="nav-icon">◎</span> Nóminas
         <span class="badge">WIP</span>
@@ -182,6 +186,15 @@
           <div class="mc-desc">Revisión del plan de cuentas y asientos exportados desde Holded.</div>
           <span class="mc-arrow">→</span>
         </div>
+        <div class="module-card" onclick="showPanelById('impuestos')">
+          <div class="mc-top">
+            <div class="mc-icon">◉</div>
+            <span class="mc-status s-ready">ACTIVO</span>
+          </div>
+          <div class="mc-title">Impuestos</div>
+          <div class="mc-desc">Control y cuadre de modelos de impuestos: IVA, IRPF y retenciones.</div>
+          <span class="mc-arrow">→</span>
+        </div>
         <div class="module-card disabled">
           <div class="mc-top">
             <div class="mc-icon">◎</div>
@@ -213,6 +226,11 @@
       <iframe src="control_facturas_recibidas.html" title="Facturas Recibidas"></iframe>
     </div>
 
+    <!-- IMPUESTOS -->
+    <div class="panel iframe-panel" id="panel-impuestos">
+      <iframe src="lpaudit_impuestos.html" title="Impuestos"></iframe>
+    </div>
+
     <!-- CONTABLE -->
     <div class="panel iframe-panel" id="panel-contable">
       <iframe src="lpaudit_cuentas.html" title="Cuentas Contables"></iframe>
@@ -237,6 +255,7 @@
     emitidas:  ['Facturas Emitidas',  'Auditoría · Holded Export'],
     recibidas: ['Facturas Recibidas', 'Auditoría · Holded Export'],
     contable:  ['Cuentas Contables',  'Auditoría · Holded Export'],
+    impuestos: ['Impuestos',           'Auditoría · Modelos Fiscales'],
     nominas:   ['Nóminas',            'En desarrollo'],
     tesoreria: ['Tesorería',          'En desarrollo'],
   };
