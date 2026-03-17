@@ -194,6 +194,7 @@
     <button class="btn-run" id="btnRun" onclick="runAudit()" disabled>Analizar</button>
   </div>
 
+  <div id="errorMsg" style="display:none;margin:20px 32px;padding:16px 20px;background:rgba(255,71,87,0.08);border:1px solid rgba(255,71,87,0.25);border-radius:8px;color:#ff4757;font-family:'DM Mono',monospace;font-size:12px;"></div>
   <div id="loading"><span class="spinner"></span>Analizando y cruzando datos…</div>
 
   <div id="results">
@@ -344,6 +345,9 @@ function runAudit() {
 }
 
 function _audit() {
+  const errEl = document.getElementById('errorMsg');
+  errEl.style.display = 'none';
+  try {
   const tri=+document.getElementById('selTrimestre').value;
   const anyo=+document.getElementById('selAnyo').value;
   const months={1:[1,2,3],2:[4,5,6],3:[7,8,9],4:[10,11,12]}[tri];
@@ -436,6 +440,12 @@ function _audit() {
 
   auditResult = {label,tri,anyo,ivaRep,ivaSop,irpfComp,t477,t472,t4751,d477,d472,d4751,no477,diff477,orph477,no472,diffIva472,orph472,no4751,orph4751};
   render(auditResult);
+  } catch(err) {
+    document.getElementById('loading').style.display = 'none';
+    errEl.style.display = 'block';
+    errEl.innerHTML = '⚠ Error al analizar: ' + err.message + '<br><span style="opacity:0.6;font-size:11px;">Comprueba que los archivos Excel son los correctos (Ingresos, Compras y Libro Diario de Holded)</span>';
+    console.error(err);
+  }
 }
 
 function render(r) {
