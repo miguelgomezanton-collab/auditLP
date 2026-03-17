@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LPAUDIT — Sumas y Saldos</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #06090f;
+    --surface: #0c1220;
+    --surface2: #101828;
+    --border: #162040;
+    --border2: #1e2e55;
+    --text: #e8eaf0;
+    --text2: #7888a0;
+    --text3: #3a4a66;
+    --green: #00d4a0;
+    --green-dim: rgba(0,212,160,0.08);
+    --red: #ff4d6a;
+    --red-dim: rgba(255,77,106,0.08);
+    --amber: #f5a623;
+    --amber-dim: rgba(245,166,35,0.08);
+    --blue: #4a7fd4;
+    --blue-dim: rgba(74,127,212,0.08);
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
+
+  /* HEADER */
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex; align-items: center; gap: 16px;
+    background: var(--surface);
+  }
+  .logo { font-family: var(--mono); font-size: 13px; font-weight: 600; letter-spacing: 0.15em; color: var(--green); }
+  .logo span { color: var(--text3); }
+  .module-name { font-size: 13px; color: var(--text2); font-family: var(--mono); }
+  .sep { color: var(--border2); }
+
+  /* UPLOAD ZONE */
+  .upload-section {
+    padding: 32px;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px;
+  }
+  .upload-card {
+    border: 1px dashed var(--border2);
+    border-radius: 8px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.15s;
+    background: var(--surface);
+    position: relative;
+  }
+  .upload-card:hover { border-color: var(--green); background: var(--green-dim); }
+  .upload-card.loaded { border-color: var(--green); border-style: solid; background: var(--green-dim); }
+  .upload-card.optional { border-color: var(--border); }
+  .upload-card.dragover { border-color: var(--green); background: var(--green-dim); transform: scale(1.01); }
+  .upload-card input { display: none; }
+  .card-label {
+    font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.12em;
+    color: var(--text3); text-transform: uppercase; margin-bottom: 8px;
+  }
+  .upload-card.loaded .card-label { color: var(--green); }
+  .card-title { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+  .card-desc { font-size: 12px; color: var(--text2); }
+  .card-status { font-size: 11px; font-family: var(--mono); margin-top: 10px; }
+  .card-status.ok { color: var(--green); }
+  .card-status.pending { color: var(--text3); }
+  .badge-optional {
+    position: absolute; top: 12px; right: 12px;
+    font-size: 9px; font-family: var(--mono); letter-spacing: 0.1em;
+    color: var(--text3); background: var(--border); border-radius: 3px; padding: 2px 6px;
+  }
+
+  /* ANALYZE BUTTON */
+  .analyze-wrap { padding: 0 32px 32px; }
+  .btn-analyze {
+    background: var(--green); color: #0a0c0f; border: none; cursor: pointer;
+    font-family: var(--mono); font-size: 13px; font-weight: 600; letter-spacing: 0.08em;
+    padding: 14px 32px; border-radius: 6px; transition: all 0.15s;
+  }
+  .btn-analyze:hover { background: #00f0b8; transform: translateY(-1px); }
+  .btn-analyze:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; transform: none; }
+
+  /* RESULTS */
+  .results { padding: 0 32px 48px; display: flex; flex-direction: column; gap: 24px; }
+
+  /* SECTION */
+  .section { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface); }
+  .section-header {
+    padding: 16px 20px; display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid var(--border); background: var(--surface2);
+    cursor: pointer; user-select: none;
+  }
+  .section-header:hover { background: var(--border); }
+  .section-icon { font-size: 16px; }
+  .section-title { font-size: 14px; font-weight: 600; flex: 1; }
+  .section-badge {
+    font-size: 11px; font-family: var(--mono); padding: 3px 10px; border-radius: 20px; font-weight: 600;
+  }
+  .badge-ok { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,212,160,0.2); }
+  .badge-warn { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(245,166,35,0.2); }
+  .badge-error { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,77,106,0.2); }
+  .badge-info { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(77,159,255,0.2); }
+  .toggle-icon { color: var(--text3); font-size: 12px; transition: transform 0.2s; }
+  .section.collapsed .toggle-icon { transform: rotate(-90deg); }
+  .section-body { padding: 20px; }
+  .section.collapsed .section-body { display: none; }
+
+  /* STAT GRID */
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 16px; }
+  .stat {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .stat-label { font-size: 11px; color: var(--text2); font-family: var(--mono); letter-spacing: 0.05em; margin-bottom: 6px; }
+  .stat-value { font-size: 18px; font-weight: 600; font-family: var(--mono); }
+  .stat-value.green { color: var(--green); }
+  .stat-value.red { color: var(--red); }
+  .stat-value.amber { color: var(--amber); }
+  .stat-value.blue { color: var(--blue); }
+  .stat-sub { font-size: 11px; color: var(--text3); margin-top: 4px; font-family: var(--mono); }
+
+  /* CHECK ROW */
+  .check-row {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .check-row:last-child { border-bottom: none; }
+  .check-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .check-info { flex: 1; }
+  .check-title { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+  .check-detail { font-size: 12px; color: var(--text2); font-family: var(--mono); }
+  .check-amount { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+  .check-amount.ok { color: var(--green); }
+  .check-amount.diff { color: var(--red); }
+  .check-amount.amber { color: var(--amber); }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; margin-top: 12px; border-radius: 6px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th {
+    background: var(--surface2); padding: 9px 14px; text-align: left;
+    font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+    color: var(--text2); border-bottom: 1px solid var(--border); white-space: nowrap;
+  }
+  th.right, td.right { text-align: right; }
+  td { padding: 8px 14px; border-bottom: 1px solid var(--border); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  td.mono { font-family: var(--mono); font-size: 11px; }
+  td.red { color: var(--red); font-family: var(--mono); }
+  td.green { color: var(--green); font-family: var(--mono); }
+  td.amber { color: var(--amber); font-family: var(--mono); }
+  td.dim { color: var(--text3); }
+
+  /* DIFF HIGHLIGHT */
+  .diff-positive { color: var(--green); }
+  .diff-negative { color: var(--red); }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 32px; color: var(--text3); font-family: var(--mono); font-size: 12px; }
+
+  /* EXPORT */
+  .export-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .btn-export {
+    background: var(--surface2); color: var(--text2); border: 1px solid var(--border2);
+    font-family: var(--mono); font-size: 11px; padding: 8px 16px; border-radius: 5px;
+    cursor: pointer; transition: all 0.15s; letter-spacing: 0.05em;
+  }
+  .btn-export:hover { border-color: var(--green); color: var(--green); background: var(--green-dim); }
+
+  /* INFO BOX */
+  .info-box {
+    background: var(--blue-dim); border: 1px solid rgba(77,159,255,0.2);
+    border-radius: 6px; padding: 12px 16px; font-size: 12px; color: var(--text2);
+    display: flex; gap: 10px; align-items: flex-start; margin-bottom: 16px;
+  }
+  .info-box .icon { color: var(--blue); font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+
+  /* PERIOD TAG */
+  .period-tag {
+    font-family: var(--mono); font-size: 11px; color: var(--text3);
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 4px; padding: 3px 10px; margin-left: auto;
+  }
+</style>
+</head>
+<body>
+
+<div style="background:#0c1220;border-bottom:1px solid #162040;padding:11px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0;width:100%;box-sizing:border-box;position:sticky;top:0;z-index:100;"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4a7fd4;font-weight:500;">Sumas y Saldos</span><span style="font-family:'DM Mono',monospace;font-size:9px;color:#3a4a66;margin-left:4px;">· Legal Pigeon Auditoría Interna</span></div>
+<div class="upload-section">
+  <!-- S&S - obligatorio -->
+  <div class="upload-card" id="card-ss">
+    <div class="card-label">● Obligatorio</div>
+    <div class="card-title">Sumas y Saldos</div>
+    <div class="card-desc">Holded → Contabilidad → Informes → Sumas y Saldos</div>
+    <div class="card-status pending" id="status-ss">Clic o arrastra aquí</div>
+    <input type="file" id="file-ss" accept=".xlsx,.xls" onchange="loadFile('ss', this)">
+  </div>
+  <!-- Libro diario - opcional -->
+  <div class="upload-card optional" id="card-ld">
+    <span class="badge-optional">opcional</span>
+    <div class="card-label">○ Opcional</div>
+    <div class="card-title">Libro Diario</div>
+    <div class="card-desc">Para cruzar totales Debe/Haber con el S&S</div>
+    <div class="card-status pending" id="status-ld">Clic o arrastra aquí</div>
+    <input type="file" id="file-ld" accept=".xlsx,.xls" onchange="loadFile('ld', this)">
+  </div>
+  <!-- Facturas emitidas - opcional -->
+  <div class="upload-card optional" id="card-em">
+    <span class="badge-optional">opcional</span>
+    <div class="card-label">○ Opcional</div>
+    <div class="card-title">Facturas Emitidas</div>
+    <div class="card-desc">Para cruzar ingresos 705xx contra facturas</div>
+    <div class="card-status pending" id="status-em">Clic o arrastra aquí</div>
+    <input type="file" id="file-em" accept=".xlsx,.xls" onchange="loadFile('em', this)">
+  </div>
+  <!-- Facturas recibidas - opcional -->
+  <div class="upload-card optional" id="card-rc">
+    <span class="badge-optional">opcional</span>
+    <div class="card-label">○ Opcional</div>
+    <div class="card-title">Facturas Recibidas</div>
+    <div class="card-desc">Para cruzar proveedores 400xx contra compras</div>
+    <div class="card-status pending" id="status-rc">Clic o arrastra aquí</div>
+    <input type="file" id="file-rc" accept=".xlsx,.xls" onchange="loadFile('rc', this)">
+  </div>
+</div>
+
+<div class="analyze-wrap">
+  <button class="btn-analyze" id="btn-analyze" onclick="runAnalysis()" disabled>
+    Analizar →
+  </button>
+</div>
+
+<div class="results" id="results"></div>
+
+<script>
+const data = { ss: null, ld: null, em: null, rc: null };
+
+// ─── DRAG & DROP + CLICK SETUP ────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const cards = [
+    { cardId: 'card-ss', fileId: 'file-ss', key: 'ss' },
+    { cardId: 'card-ld', fileId: 'file-ld', key: 'ld' },
+    { cardId: 'card-em', fileId: 'file-em', key: 'em' },
+    { cardId: 'card-rc', fileId: 'file-rc', key: 'rc' },
+  ];
+  for (const { cardId, fileId, key } of cards) {
+    const card = document.getElementById(cardId);
+    const input = document.getElementById(fileId);
+
+    // Click to open file picker
+    card.addEventListener('click', () => input.click());
+
+    // Drag events
+    card.addEventListener('dragover', e => {
+      e.preventDefault();
+      card.classList.add('dragover');
+    });
+    card.addEventListener('dragleave', e => {
+      if (!card.contains(e.relatedTarget)) card.classList.remove('dragover');
+    });
+    card.addEventListener('drop', e => {
+      e.preventDefault();
+      card.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) processFile(key, file);
+    });
+  }
+});
+
+function loadFile(key, input) {
+  const file = input.files[0];
+  if (file) processFile(key, file);
+}
+
+function processFile(key, file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+      data[key] = raw;
+      document.getElementById('card-' + key).classList.add('loaded');
+      document.getElementById('status-' + key).className = 'card-status ok';
+      document.getElementById('status-' + key).textContent = '✓ ' + file.name;
+      if (data.ss) document.getElementById('btn-analyze').disabled = false;
+    } catch(err) {
+      alert('Error al leer el archivo: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ─── PARSE HELPERS ───────────────────────────────────────────────────────────
+
+function parseSS(raw) {
+  // Find header row (has "Cuenta" and "Nombre")
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(15, raw.length); i++) {
+    const row = raw[i];
+    if (row && row.some(c => String(c||'').includes('Nombre')) && row.some(c => String(c||'').includes('Cuenta'))) {
+      headerIdx = i; break;
+    }
+  }
+  if (headerIdx === -1) headerIdx = 5;
+
+  // Detect period from row 1 or 2
+  let period = '';
+  for (let i = 0; i < 5; i++) {
+    const txt = (raw[i] || []).join(' ');
+    const m = txt.match(/(\d{2}\/\d{2}\/\d{4})\s*[-–]\s*(\d{2}\/\d{2}\/\d{4})/);
+    if (m) { period = m[0]; break; }
+  }
+
+  const rows = [];
+  for (let i = headerIdx + 1; i < raw.length; i++) {
+    const r = raw[i];
+    if (!r || !r[0]) continue;
+    const cuenta = String(r[0]).trim();
+    if (cuenta === 'Total' || cuenta === 'Cuenta' || cuenta === '') continue;
+    // Last row check
+    if (cuenta.toLowerCase().startsWith('informe')) continue;
+    const nombre = String(r[1] || '').trim();
+    const saldo_ini = parseFloat(r[2]) || 0;
+    const debe_p = parseFloat(r[3]) || 0;
+    const haber_p = parseFloat(r[4]) || 0;
+    const debe_a = parseFloat(r[5]) || 0;
+    const haber_a = parseFloat(r[6]) || 0;
+    const saldo_d = parseFloat(r[7]) || 0;
+    const saldo_c = parseFloat(r[8]) || 0;
+
+    // Extract base account (before decimal)
+    const cuentaBase = cuenta.split('.')[0].replace(/\D/g,'');
+    rows.push({ cuenta, cuentaBase, nombre, saldo_ini, debe_p, haber_p, debe_a, haber_a, saldo_d, saldo_c });
+  }
+
+  // Find total row
+  let totalRow = null;
+  for (let i = raw.length - 1; i >= 0; i--) {
+    const r = raw[i];
+    if (r && String(r[0]||'').trim() === 'Total') {
+      totalRow = {
+        debe_p: parseFloat(r[3]) || 0,
+        haber_p: parseFloat(r[4]) || 0,
+        debe_a: parseFloat(r[5]) || 0,
+        haber_a: parseFloat(r[6]) || 0,
+        saldo_d: parseFloat(r[7]) || 0,
+        saldo_c: parseFloat(r[8]) || 0,
+      };
+      break;
+    }
+  }
+
+  return { rows, totalRow, period };
+}
+
+function parseLD(raw) {
+  // Find header row
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(15, raw.length); i++) {
+    const row = raw[i];
+    if (row && row.some(c => String(c||'').toLowerCase() === 'debe') && row.some(c => String(c||'').toLowerCase() === 'haber')) {
+      headerIdx = i; break;
+    }
+  }
+  if (headerIdx === -1) return null;
+  const cols = raw[headerIdx].map(c => String(c||'').trim().toLowerCase());
+  const debeIdx = cols.indexOf('debe');
+  const haberIdx = cols.indexOf('haber');
+  let totalDebe = 0, totalHaber = 0;
+  for (let i = headerIdx + 1; i < raw.length; i++) {
+    const r = raw[i];
+    if (!r) continue;
+    totalDebe += parseFloat(r[debeIdx]) || 0;
+    totalHaber += parseFloat(r[haberIdx]) || 0;
+  }
+  return { totalDebe: Math.round(totalDebe * 100) / 100, totalHaber: Math.round(totalHaber * 100) / 100 };
+}
+
+function parseEmitidas(raw) {
+  // Find header
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(10, raw.length); i++) {
+    const row = raw[i];
+    if (row && row.some(c => String(c||'').toLowerCase().includes('importe') || String(c||'').toLowerCase().includes('total'))) {
+      headerIdx = i; break;
+    }
+  }
+  if (headerIdx === -1) headerIdx = 0;
+  const cols = raw[headerIdx].map(c => String(c||'').trim().toLowerCase());
+  // Find total/importe column
+  let totalCol = cols.findIndex(c => c.includes('total') && !c.includes('iva'));
+  if (totalCol === -1) totalCol = cols.findIndex(c => c.includes('importe'));
+  if (totalCol === -1) totalCol = cols.findIndex(c => c.includes('base'));
+  let ivaCol = cols.findIndex(c => c.includes('iva') && !c.includes('%'));
+  
+  let totalBase = 0, totalIva = 0, count = 0;
+  for (let i = headerIdx + 1; i < raw.length; i++) {
+    const r = raw[i];
+    if (!r || !r[0]) continue;
+    if (totalCol >= 0) totalBase += parseFloat(r[totalCol]) || 0;
+    if (ivaCol >= 0) totalIva += parseFloat(r[ivaCol]) || 0;
+    count++;
+  }
+  return { totalBase: Math.round(totalBase * 100) / 100, totalIva: Math.round(totalIva * 100) / 100, count };
+}
+
+function parseRecibidas(raw) {
+  let headerIdx = -1;
+  for (let i = 0; i < Math.min(10, raw.length); i++) {
+    const row = raw[i];
+    if (row && row.some(c => String(c||'').toLowerCase().includes('importe') || String(c||'').toLowerCase().includes('total'))) {
+      headerIdx = i; break;
+    }
+  }
+  if (headerIdx === -1) headerIdx = 0;
+  const cols = raw[headerIdx].map(c => String(c||'').trim().toLowerCase());
+  let totalCol = cols.findIndex(c => c.includes('total') && !c.includes('iva'));
+  if (totalCol === -1) totalCol = cols.findIndex(c => c.includes('importe'));
+  if (totalCol === -1) totalCol = cols.findIndex(c => c.includes('base'));
+  let ivaCol = cols.findIndex(c => c.includes('iva') && !c.includes('%'));
+
+  let totalBase = 0, totalIva = 0, count = 0;
+  for (let i = headerIdx + 1; i < raw.length; i++) {
+    const r = raw[i];
+    if (!r || !r[0]) continue;
+    if (totalCol >= 0) totalBase += parseFloat(r[totalCol]) || 0;
+    if (ivaCol >= 0) totalIva += parseFloat(r[ivaCol]) || 0;
+    count++;
+  }
+  return { totalBase: Math.round(totalBase * 100) / 100, totalIva: Math.round(totalIva * 100) / 100, count };
+}
+
+// ─── FORMAT ──────────────────────────────────────────────────────────────────
+
+function fmt(n) {
+  if (n === null || n === undefined) return '—';
+  return new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) + ' €';
+}
+function fmtDiff(n) {
+  if (Math.abs(n) < 0.01) return '<span class="diff-positive">0,00 €</span>';
+  const s = fmt(Math.abs(n));
+  if (n > 0) return `<span class="diff-positive">+${s}</span>`;
+  return `<span class="diff-negative">-${s}</span>`;
+}
+
+// ─── MAIN ANALYSIS ───────────────────────────────────────────────────────────
+
+function runAnalysis() {
+  const ss = parseSS(data.ss);
+  const sections = [];
+
+  // ── 1. CUADRE INTERNO ────────────────────────────────────────────────────
+  const totalDebe = ss.rows.reduce((a,r) => a + r.debe_p, 0);
+  const totalHaber = ss.rows.reduce((a,r) => a + r.haber_p, 0);
+  const totalSaldoD = ss.rows.reduce((a,r) => a + r.saldo_d, 0);
+  const totalSaldoC = ss.rows.reduce((a,r) => a + r.saldo_c, 0);
+  const diffDH = Math.round((totalDebe - totalHaber) * 100) / 100;
+  const diffSaldos = Math.round((totalSaldoD - totalSaldoC) * 100) / 100;
+
+  // Cuentas con saldo en lado incorrecto
+  const saldosRaros = [];
+  for (const r of ss.rows) {
+    const base = r.cuentaBase;
+    if (!base) continue;
+    const grupo = parseInt(base[0]);
+    // Activo (1-5 algunas, 2, 3, 4 deudoras, 6): saldo deudor normal
+    // Pasivo (1 acreedoras, 4 acreedoras, 5 pasivo, 7): saldo acreedor normal
+    // Regla simplificada: cuentas 6xx y activo típico deben ser deudoras, 7xx y pasivo acreedoras
+    const is6 = base.startsWith('6');
+    const is7 = base.startsWith('7');
+    const is4 = base.startsWith('4');
+    const is1 = base.startsWith('1');
+    const is5 = base.startsWith('5');
+
+    if (is6 && r.saldo_c > 0.01 && r.saldo_d === 0) {
+      saldosRaros.push({ ...r, motivo: 'Gasto con saldo acreedor' });
+    }
+    if (is7 && r.saldo_d > 0.01 && r.saldo_c === 0) {
+      saldosRaros.push({ ...r, motivo: 'Ingreso con saldo deudor' });
+    }
+  }
+
+  const cuadreOk = Math.abs(diffDH) < 0.02 && Math.abs(diffSaldos) < 0.02;
+  sections.push({
+    id: 'cuadre',
+    icon: '⚖️',
+    title: 'Cuadre interno del Sumas y Saldos',
+    badge: cuadreOk && saldosRaros.length === 0 ? 'ok' : (cuadreOk ? 'warn' : 'error'),
+    badgeText: cuadreOk && saldosRaros.length === 0 ? '✓ Cuadrado' : (cuadreOk ? `${saldosRaros.length} avisos` : 'Descuadre'),
+    render: () => {
+      const rows = [
+        { label: 'Total Debe (período)', val: totalDebe, ok: true },
+        { label: 'Total Haber (período)', val: totalHaber, ok: true },
+        { label: 'Diferencia Debe − Haber', val: diffDH, ok: Math.abs(diffDH) < 0.02 },
+        { label: 'Total Saldo Deudor', val: totalSaldoD, ok: true },
+        { label: 'Total Saldo Acreedor', val: totalSaldoC, ok: true },
+        { label: 'Diferencia saldos', val: diffSaldos, ok: Math.abs(diffSaldos) < 0.02 },
+      ];
+      let html = `<div class="stat-grid">`;
+      html += `<div class="stat"><div class="stat-label">Total Debe período</div><div class="stat-value blue">${fmt(totalDebe)}</div></div>`;
+      html += `<div class="stat"><div class="stat-label">Total Haber período</div><div class="stat-value blue">${fmt(totalHaber)}</div></div>`;
+      html += `<div class="stat"><div class="stat-label">Diferencia D−H</div><div class="stat-value ${Math.abs(diffDH)<0.02?'green':'red'}">${fmt(diffDH)}</div></div>`;
+      html += `<div class="stat"><div class="stat-label">Saldo deudor total</div><div class="stat-value blue">${fmt(totalSaldoD)}</div></div>`;
+      html += `<div class="stat"><div class="stat-label">Saldo acreedor total</div><div class="stat-value blue">${fmt(totalSaldoC)}</div></div>`;
+      html += `<div class="stat"><div class="stat-label">Diferencia saldos</div><div class="stat-value ${Math.abs(diffSaldos)<0.02?'green':'red'}">${fmt(diffSaldos)}</div></div>`;
+      html += `</div>`;
+
+      if (saldosRaros.length > 0) {
+        html += `<div style="margin-bottom:8px;font-size:13px;font-weight:600;color:var(--amber)">⚠ Cuentas con saldo en lado incorrecto (${saldosRaros.length})</div>`;
+        html += `<div class="table-wrap"><table>
+          <thead><tr><th>Cuenta</th><th>Nombre</th><th class="right">Saldo deudor</th><th class="right">Saldo acreedor</th><th>Motivo</th></tr></thead><tbody>`;
+        for (const r of saldosRaros) {
+          html += `<tr>
+            <td class="mono">${r.cuenta}</td>
+            <td>${r.nombre}</td>
+            <td class="right mono">${fmt(r.saldo_d)}</td>
+            <td class="right mono">${fmt(r.saldo_c)}</td>
+            <td class="amber">${r.motivo}</td>
+          </tr>`;
+        }
+        html += `</tbody></table></div>`;
+      } else {
+        html += `<div class="check-row"><span class="check-icon">✅</span><div class="check-info"><div class="check-title">No hay cuentas con saldo en lado incorrecto</div><div class="check-detail">Todas las cuentas 6xx tienen saldo deudor y las 7xx saldo acreedor</div></div></div>`;
+      }
+      return html;
+    }
+  });
+
+  // ── 2. CRUCE CON LIBRO DIARIO ─────────────────────────────────────────────
+  if (data.ld) {
+    const ld = parseLD(data.ld);
+    const diffLdDebe = ld ? Math.round((totalDebe - ld.totalDebe) * 100) / 100 : null;
+    const diffLdHaber = ld ? Math.round((totalHaber - ld.totalHaber) * 100) / 100 : null;
+    const ldOk = ld && Math.abs(diffLdDebe) < 0.05 && Math.abs(diffLdHaber) < 0.05;
+
+    sections.push({
+      id: 'libro',
+      icon: '📒',
+      title: 'Cruce Sumas y Saldos ↔ Libro Diario',
+      badge: ldOk ? 'ok' : 'error',
+      badgeText: ldOk ? '✓ Cuadra' : 'Diferencia',
+      render: () => {
+        if (!ld) return `<div class="empty">No se pudo leer el Libro Diario</div>`;
+        let html = `<div class="stat-grid">
+          <div class="stat"><div class="stat-label">S&S — Debe período</div><div class="stat-value blue">${fmt(totalDebe)}</div></div>
+          <div class="stat"><div class="stat-label">Libro — Debe total</div><div class="stat-value blue">${fmt(ld.totalDebe)}</div></div>
+          <div class="stat"><div class="stat-label">Diferencia Debe</div><div class="stat-value ${Math.abs(diffLdDebe)<0.05?'green':'red'}">${fmt(diffLdDebe)}</div></div>
+          <div class="stat"><div class="stat-label">S&S — Haber período</div><div class="stat-value blue">${fmt(totalHaber)}</div></div>
+          <div class="stat"><div class="stat-label">Libro — Haber total</div><div class="stat-value blue">${fmt(ld.totalHaber)}</div></div>
+          <div class="stat"><div class="stat-label">Diferencia Haber</div><div class="stat-value ${Math.abs(diffLdHaber)<0.05?'green':'red'}">${fmt(diffLdHaber)}</div></div>
+        </div>`;
+        if (ldOk) {
+          html += `<div class="check-row"><span class="check-icon">✅</span><div class="check-info"><div class="check-title">Sumas y Saldos cuadra con el Libro Diario</div><div class="check-detail">Diferencia Debe: ${fmt(diffLdDebe)} · Diferencia Haber: ${fmt(diffLdHaber)}</div></div></div>`;
+        } else {
+          html += `<div class="check-row"><span class="check-icon">🔴</span><div class="check-info"><div class="check-title">Existe diferencia entre S&S y Libro Diario</div><div class="check-detail">Revisar asientos no contabilizados o filtros de fecha distintos</div></div></div>`;
+        }
+        return html;
+      }
+    });
+  }
+
+  // ── 3. CRUCE FACTURAS EMITIDAS ────────────────────────────────────────────
+  if (data.em) {
+    const em = parseEmitidas(data.em);
+    // Ingresos en S&S: suma Haber de cuentas 705xx
+    const ing705 = ss.rows.filter(r => r.cuentaBase.startsWith('705')).reduce((a,r) => a + r.haber_p, 0);
+    const ing705round = Math.round(ing705 * 100) / 100;
+    const diffIng = Math.round((ing705round - em.totalBase) * 100) / 100;
+    const ingOk = Math.abs(diffIng) < 0.10;
+
+    // IVA emitido en S&S: cuenta 477
+    const iva477 = ss.rows.filter(r => r.cuentaBase.startsWith('477')).reduce((a,r) => a + r.haber_p, 0);
+    const iva477round = Math.round(iva477 * 100) / 100;
+    const diffIva = Math.round((iva477round - em.totalIva) * 100) / 100;
+    const ivaOk = em.totalIva === 0 || Math.abs(diffIva) < 0.10;
+
+    sections.push({
+      id: 'emitidas',
+      icon: '📤',
+      title: 'Cruce Facturas Emitidas ↔ Cuentas 705xx / 477',
+      badge: ingOk && ivaOk ? 'ok' : 'error',
+      badgeText: ingOk && ivaOk ? '✓ Cuadra' : 'Diferencia',
+      render: () => {
+        const ingRows = ss.rows.filter(r => r.cuentaBase.startsWith('705'));
+        let html = `<div class="info-box"><span class="icon">ℹ</span>Se compara el Haber de cuentas 705xx del S&S con el total de base imponible de las facturas emitidas. También se cruza la cuenta 477 con el IVA repercutido declarado.</div>`;
+        html += `<div class="stat-grid">
+          <div class="stat"><div class="stat-label">Ingresos 705xx (S&S)</div><div class="stat-value blue">${fmt(ing705round)}</div></div>
+          <div class="stat"><div class="stat-label">Base emitidas (facturas)</div><div class="stat-value blue">${fmt(em.totalBase)}</div></div>
+          <div class="stat"><div class="stat-label">Diferencia</div><div class="stat-value ${ingOk?'green':'red'}">${fmt(diffIng)}</div></div>
+          <div class="stat"><div class="stat-label">IVA 477xx (S&S)</div><div class="stat-value blue">${fmt(iva477round)}</div></div>
+          <div class="stat"><div class="stat-label">IVA facturas emitidas</div><div class="stat-value blue">${fmt(em.totalIva)}</div></div>
+          <div class="stat"><div class="stat-label">Diferencia IVA</div><div class="stat-value ${ivaOk?'green':'red'}">${fmt(diffIva)}</div></div>
+        </div>`;
+        // Detalle cuentas 705
+        if (ingRows.length > 0) {
+          html += `<div style="margin:12px 0 6px;font-size:12px;font-weight:600;color:var(--text2);font-family:var(--mono);letter-spacing:0.05em;">DETALLE CUENTAS 705xx</div>`;
+          html += `<div class="table-wrap"><table>
+            <thead><tr><th>Cuenta</th><th>Nombre</th><th class="right">Debe período</th><th class="right">Haber período</th><th class="right">Saldo acreedor</th></tr></thead><tbody>`;
+          for (const r of ingRows) {
+            html += `<tr><td class="mono">${r.cuenta}</td><td>${r.nombre}</td><td class="right mono ${r.debe_p>0?'amber':''}">${r.debe_p?fmt(r.debe_p):'—'}</td><td class="right mono">${fmt(r.haber_p)}</td><td class="right green">${fmt(r.saldo_c)}</td></tr>`;
+          }
+          html += `<tr><td colspan="2" style="font-weight:600;font-family:var(--mono);font-size:11px;">TOTAL</td><td class="right mono">${fmt(ingRows.reduce((a,r)=>a+r.debe_p,0))}</td><td class="right mono" style="font-weight:600;">${fmt(ing705round)}</td><td class="right green" style="font-weight:600;">${fmt(ingRows.reduce((a,r)=>a+r.saldo_c,0))}</td></tr>`;
+          html += `</tbody></table></div>`;
+        }
+        return html;
+      }
+    });
+  }
+
+  // ── 4. CRUCE FACTURAS RECIBIDAS ───────────────────────────────────────────
+  if (data.rc) {
+    const rc = parseRecibidas(data.rc);
+    // Proveedores en S&S: suma Haber de cuentas 400xx
+    const prov400haber = ss.rows.filter(r => r.cuentaBase.startsWith('400')).reduce((a,r) => a + r.haber_p, 0);
+    const prov400round = Math.round(prov400haber * 100) / 100;
+    const diffProv = Math.round((prov400round - rc.totalBase) * 100) / 100;
+    const provOk = Math.abs(diffProv) < 0.10;
+
+    // IVA soportado: cuenta 472
+    const iva472 = ss.rows.filter(r => r.cuentaBase.startsWith('472')).reduce((a,r) => a + r.debe_p, 0);
+    const iva472round = Math.round(iva472 * 100) / 100;
+    const diffIvaSop = Math.round((iva472round - rc.totalIva) * 100) / 100;
+    const ivaSOk = rc.totalIva === 0 || Math.abs(diffIvaSop) < 0.10;
+
+    // Saldo pendiente de pago (saldo acreedor neto de 400xx)
+    const saldoPendiente = ss.rows.filter(r => r.cuentaBase.startsWith('400')).reduce((a,r) => a + r.saldo_c - r.saldo_d, 0);
+
+    sections.push({
+      id: 'recibidas',
+      icon: '📥',
+      title: 'Cruce Facturas Recibidas ↔ Cuentas 400xx / 472',
+      badge: provOk && ivaSOk ? 'ok' : 'error',
+      badgeText: provOk && ivaSOk ? '✓ Cuadra' : 'Diferencia',
+      render: () => {
+        let html = `<div class="info-box"><span class="icon">ℹ</span>Se compara el Haber de cuentas 400xx del S&S con el total de compras. También se cruza la cuenta 472 con el IVA soportado. El saldo acreedor neto de 400xx indica la deuda pendiente con proveedores.</div>`;
+        html += `<div class="stat-grid">
+          <div class="stat"><div class="stat-label">Haber 400xx (S&S)</div><div class="stat-value blue">${fmt(prov400round)}</div></div>
+          <div class="stat"><div class="stat-label">Base recibidas (facturas)</div><div class="stat-value blue">${fmt(rc.totalBase)}</div></div>
+          <div class="stat"><div class="stat-label">Diferencia</div><div class="stat-value ${provOk?'green':'red'}">${fmt(diffProv)}</div></div>
+          <div class="stat"><div class="stat-label">IVA 472xx (S&S)</div><div class="stat-value blue">${fmt(iva472round)}</div></div>
+          <div class="stat"><div class="stat-label">IVA facturas recibidas</div><div class="stat-value blue">${fmt(rc.totalIva)}</div></div>
+          <div class="stat"><div class="stat-label">Diferencia IVA</div><div class="stat-value ${ivaSOk?'green':'red'}">${fmt(diffIvaSop)}</div></div>
+          <div class="stat"><div class="stat-label">Saldo pendiente pago</div><div class="stat-value amber">${fmt(Math.round(saldoPendiente*100)/100)}</div><div class="stat-sub">saldo acreedor neto 400xx</div></div>
+        </div>`;
+        return html;
+      }
+    });
+  }
+
+  // ── 5. RESUMEN POR GRUPOS ─────────────────────────────────────────────────
+  const grupos = [
+    { prefix: '1', label: 'Grupo 1 — Financiación básica' },
+    { prefix: '2', label: 'Grupo 2 — Activo no corriente' },
+    { prefix: '3', label: 'Grupo 3 — Existencias' },
+    { prefix: '4', label: 'Grupo 4 — Acreedores y deudores' },
+    { prefix: '5', label: 'Grupo 5 — Cuentas financieras' },
+    { prefix: '6', label: 'Grupo 6 — Compras y gastos' },
+    { prefix: '7', label: 'Grupo 7 — Ventas e ingresos' },
+  ];
+  const grupoData = grupos.map(g => {
+    const rows = ss.rows.filter(r => r.cuentaBase.startsWith(g.prefix));
+    return {
+      ...g,
+      numCuentas: rows.length,
+      debe: Math.round(rows.reduce((a,r) => a+r.debe_p,0)*100)/100,
+      haber: Math.round(rows.reduce((a,r) => a+r.haber_p,0)*100)/100,
+      saldo_d: Math.round(rows.reduce((a,r) => a+r.saldo_d,0)*100)/100,
+      saldo_c: Math.round(rows.reduce((a,r) => a+r.saldo_c,0)*100)/100,
+    };
+  });
+
+  sections.push({
+    id: 'grupos',
+    icon: '📊',
+    title: 'Resumen por grupos del PGC',
+    badge: 'info',
+    badgeText: `${ss.rows.length} cuentas`,
+    render: () => {
+      let html = `<div class="table-wrap"><table>
+        <thead><tr><th>Grupo</th><th class="right">Nº cuentas</th><th class="right">Debe período</th><th class="right">Haber período</th><th class="right">Saldo deudor</th><th class="right">Saldo acreedor</th></tr></thead><tbody>`;
+      for (const g of grupoData) {
+        if (g.numCuentas === 0) continue;
+        html += `<tr>
+          <td>${g.label}</td>
+          <td class="right mono dim">${g.numCuentas}</td>
+          <td class="right mono">${g.debe?fmt(g.debe):'—'}</td>
+          <td class="right mono">${g.haber?fmt(g.haber):'—'}</td>
+          <td class="right green">${g.saldo_d?fmt(g.saldo_d):'—'}</td>
+          <td class="right amber">${g.saldo_c?fmt(g.saldo_c):'—'}</td>
+        </tr>`;
+      }
+      html += `</tbody></table></div>`;
+      return html;
+    }
+  });
+
+  // ─── RENDER ───────────────────────────────────────────────────────────────
+  const res = document.getElementById('results');
+  res.innerHTML = '';
+
+  // Period tag
+  if (ss.period) {
+    const ptag = document.createElement('div');
+    ptag.style.cssText = 'display:flex;align-items:center;gap:8px;padding:0 0 8px';
+    ptag.innerHTML = `<span style="font-size:12px;color:var(--text3);font-family:var(--mono)">Período analizado:</span><span class="period-tag">${ss.period}</span>`;
+    res.appendChild(ptag);
+  }
+
+  for (const s of sections) {
+    const el = document.createElement('div');
+    el.className = 'section';
+    el.id = 'sec-' + s.id;
+    el.innerHTML = `
+      <div class="section-header" onclick="toggleSection('${s.id}')">
+        <span class="section-icon">${s.icon}</span>
+        <span class="section-title">${s.title}</span>
+        <span class="section-badge badge-${s.badge}">${s.badgeText}</span>
+        <span class="toggle-icon">▾</span>
+      </div>
+      <div class="section-body">${s.render()}</div>
+    `;
+    res.appendChild(el);
+  }
+
+  // Export button
+  const expDiv = document.createElement('div');
+  expDiv.className = 'export-row';
+  expDiv.innerHTML = `<button class="btn-export" onclick="exportExcel()">↓ Exportar resumen Excel</button>`;
+  res.appendChild(expDiv);
+}
+
+function toggleSection(id) {
+  const el = document.getElementById('sec-' + id);
+  el.classList.toggle('collapsed');
+}
+
+function exportExcel() {
+  const ss = parseSS(data.ss);
+  const wb = XLSX.utils.book_new();
+
+  // Resumen
+  const resumen = [
+    ['LPAUDIT — Sumas y Saldos', '', '', ss.period || ''],
+    [],
+    ['CUADRE INTERNO', '', '', ''],
+    ['Total Debe período', ss.rows.reduce((a,r)=>a+r.debe_p,0)],
+    ['Total Haber período', ss.rows.reduce((a,r)=>a+r.haber_p,0)],
+    ['Diferencia D-H', Math.round((ss.rows.reduce((a,r)=>a+r.debe_p,0) - ss.rows.reduce((a,r)=>a+r.haber_p,0))*100)/100],
+    [],
+    ['INGRESOS 705xx', '', '', ''],
+    ...ss.rows.filter(r=>r.cuentaBase.startsWith('705')).map(r => [r.cuenta, r.nombre, r.debe_p, r.haber_p, r.saldo_c]),
+    [],
+    ['BANCOS 572xx', '', '', ''],
+    ...ss.rows.filter(r=>r.cuentaBase.startsWith('572')).map(r => [r.cuenta, r.nombre, r.debe_p, r.haber_p, r.saldo_d]),
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(resumen), 'Resumen');
+
+  // Todas las cuentas
+  const allRows = [['Cuenta','Nombre','Saldo inicial','Debe período','Haber período','Debe acum.','Haber acum.','Saldo deudor','Saldo acreedor']];
+  for (const r of ss.rows) {
+    allRows.push([r.cuenta, r.nombre, r.saldo_ini, r.debe_p, r.haber_p, r.debe_a, r.haber_a, r.saldo_d, r.saldo_c]);
+  }
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(allRows), 'Todas las cuentas');
+
+  const periodo = (ss.period || 'periodo').replace(/\//g,'-').replace(/\s/g,'_');
+  XLSX.writeFile(wb, `LPAudit_SS_${periodo}.xlsx`);
+}
+</script>
+</body>
+</html>

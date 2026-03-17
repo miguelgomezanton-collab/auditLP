@@ -127,8 +127,8 @@
         <span class="nav-dot"></span>
       </div>
       <div class="nav-item" onclick="showPanel('tesoreria', this)">
-        <span class="nav-icon">◇</span> Tesorería
-        <span class="badge">WIP</span>
+        <span class="nav-icon">◈</span> Sumas y Saldos
+        <span class="nav-dot"></span>
       </div>
     </div>
   </nav>
@@ -204,13 +204,13 @@
           <div class="mc-desc">Auditoría mensual de nóminas, retenciones IRPF y cotizaciones a la Seguridad Social.</div>
           <span class="mc-arrow">→</span>
         </div>
-        <div class="module-card disabled">
+        <div class="module-card" onclick="showPanelById('tesoreria')">
           <div class="mc-top">
-            <div class="mc-icon">◇</div>
-            <span class="mc-status s-wip">EN PROCESO</span>
+            <div class="mc-icon">◈</div>
+            <span class="mc-status s-ready">ACTIVO</span>
           </div>
-          <div class="mc-title">Tesorería</div>
-          <div class="mc-desc">Control de posición de tesorería, conciliación y previsión de pagos.</div>
+          <div class="mc-title">Sumas y Saldos</div>
+          <div class="mc-desc">Revisión del balance de sumas y saldos exportado desde Holded.</div>
           <span class="mc-arrow">→</span>
         </div>
       </div>
@@ -241,9 +241,9 @@
       <iframe src="auditoria_nominas.html" title="Nóminas"></iframe>
     </div>
 
-    <!-- TESORERIA -->
-    <div class="panel" id="panel-tesoreria">
-      <div class="coming-soon"><div class="cs-icon">◇</div><span>Módulo en desarrollo</span></div>
+    <!-- TESORERIA / SUMAS Y SALDOS -->
+    <div class="panel iframe-panel" id="panel-tesoreria">
+      <iframe src="lpaudit_sumas_saldos.html" title="Sumas y Saldos"></iframe>
     </div>
 
   </div>
@@ -257,7 +257,7 @@
     contable:  ['Cuentas Contables',  'Auditoría · Holded Export'],
     impuestos: ['Impuestos',           'Auditoría · Modelos Fiscales'],
     nominas:   ['Nóminas',            'Auditoría · Holded · Payfit'],
-    tesoreria: ['Tesorería',          'En desarrollo'],
+    tesoreria: ['Sumas y Saldos',     'Auditoría · Holded Export'],
   };
   function showPanel(id, navEl) {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
