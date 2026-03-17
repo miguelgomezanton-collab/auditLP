@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LP Audit · Nóminas</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #06090f;
+    --surface: #0c1220;
+    --surface2: #101828;
+    --border: #162040;
+    --border2: #1e2e55;
+    --accent: #4a7fd4;
+    --accent2: #8ab0e8;
+    --green: #22c55e;
+    --green-dim: #15803d;
+    --red: #ef4444;
+    --red-dim: #991b1b;
+    --yellow: #eab308;
+    --yellow-dim: #854d0e;
+    --text: #e2e8f0;
+    --text2: #7888a0;
+    --text3: #3a4a66;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* HEADER */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-icon {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .header-title { font-size: 15px; font-weight: 600; }
+  .header-sub { font-size: 12px; color: var(--text2); margin-left: auto; font-family: var(--mono); }
+
+  /* UPLOAD ZONE */
+  .upload-section {
+    padding: 24px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .upload-card {
+    background: var(--surface);
+    border: 1px dashed var(--border2);
+    border-radius: 10px;
+    padding: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+  }
+  .upload-card:hover { border-color: var(--accent); background: var(--surface2); }
+  .upload-card.drag-over { border-color: var(--accent); background: var(--surface2); box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
+  .upload-card.loaded { border-style: solid; border-color: var(--green); }
+  .upload-card.loaded::after {
+    content: '✓';
+    position: absolute;
+    top: 10px; right: 12px;
+    color: var(--green);
+    font-weight: 700;
+    font-size: 16px;
+  }
+  .upload-card input { display: none; }
+  .upload-card-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .upload-card-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+  .upload-card-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
+  .upload-card-filename {
+    margin-top: 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .upload-icon {
+    width: 36px; height: 36px;
+    margin-bottom: 12px;
+    background: var(--surface2);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .run-btn {
+    display: block;
+    margin: 0 auto 24px;
+    padding: 12px 40px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.02em;
+  }
+  .run-btn:hover { background: #2563eb; transform: translateY(-1px); }
+  .run-btn:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; transform: none; }
+
+  /* RESULTS */
+  .results { max-width: 1200px; margin: 0 auto; padding: 0 24px 40px; display: none; }
+
+  /* CUADRE GLOBAL */
+  .cuadre-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .cuadre-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .cuadre-card-label {
+    font-size: 11px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-family: var(--mono);
+    margin-bottom: 10px;
+  }
+  .cuadre-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .cuadre-row:last-child { border-bottom: none; }
+  .cuadre-row-label { color: var(--text2); }
+  .cuadre-row-val { font-family: var(--mono); font-weight: 500; }
+
+  /* STATUS BADGES */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: var(--mono);
+  }
+  .badge-ok { background: rgba(34,197,94,0.12); color: var(--green); }
+  .badge-warn { background: rgba(234,179,8,0.12); color: var(--yellow); }
+  .badge-err { background: rgba(239,68,68,0.12); color: var(--red); }
+
+  /* CRUCE TABLE */
+  .section-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-family: var(--mono);
+    margin: 24px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  thead tr { background: var(--surface2); }
+  th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text3);
+    font-family: var(--mono);
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 9px 14px;
+    font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  .num { font-family: var(--mono); text-align: right; }
+  .num-ok { color: var(--green); }
+  .num-err { color: var(--red); }
+  .num-warn { color: var(--yellow); }
+
+  .diff-ok { color: var(--green); font-family: var(--mono); text-align: right; font-size: 12px; }
+  .diff-err { color: var(--red); font-family: var(--mono); text-align: right; font-size: 12px; }
+  .diff-zero { color: var(--text3); font-family: var(--mono); text-align: right; font-size: 12px; }
+
+  /* RESUMEN CUADRE CUENTAS */
+  .cuadre-cuentas {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .cuenta-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+  }
+  .cuenta-num {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent2);
+    margin-bottom: 2px;
+  }
+  .cuenta-name { font-size: 12px; color: var(--text2); margin-bottom: 14px; }
+  .cuenta-compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+  }
+  .cuenta-source { text-align: center; }
+  .cuenta-source-label { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; font-family: var(--mono); margin-bottom: 4px; }
+  .cuenta-source-val { font-family: var(--mono); font-size: 14px; font-weight: 600; }
+  .cuenta-source-diff {
+    font-family: var(--mono);
+    font-size: 12px;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  .info-box {
+    background: rgba(59,130,246,0.08);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 8px;
+    padding: 14px 16px;
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+  .info-box strong { color: var(--accent2); }
+
+  /* LOADING */
+  .loading {
+    text-align: center;
+    padding: 40px;
+    color: var(--text3);
+    font-family: var(--mono);
+    font-size: 13px;
+    display: none;
+  }
+  .loading-dot {
+    display: inline-block;
+    animation: blink 1s infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  .period-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    margin-bottom: 20px;
+  }
+
+  .err-note {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 2px;
+    font-family: var(--mono);
+  }
+
+  .emp-name { font-weight: 500; }
+  .emp-name-small { font-size: 11px; color: var(--text3); }
+
+  tfoot td {
+    background: var(--surface2);
+    font-weight: 600;
+    font-family: var(--mono);
+    border-top: 2px solid var(--border2);
+    text-align: right;
+  }
+  tfoot td:first-child { text-align: left; color: var(--text2); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div style="background:#0c1220;border-bottom:1px solid #162040;padding:11px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0;width:100%;box-sizing:border-box;position:sticky;top:0;z-index:100;"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4a7fd4;font-weight:500;">Nóminas</span><span style="font-family:'DM Mono',monospace;font-size:9px;color:#3a4a66;margin-left:4px;">· Legal Pigeon Auditoría Interna</span></div>
+  <div>
+    <div class="header-title">LP Audit · Nóminas</div>
+  </div>
+  <div class="header-sub">Holded · Payfit · Libro Diario</div>
+</div>
+
+<div class="upload-section" id="uploadSection">
+  <div class="upload-card" id="card-holded" onclick="document.getElementById('file-holded').click()">
+    <input type="file" accept=".xlsx,.xls" id="file-holded" onchange="handleFile('holded', this)">
+    <div class="upload-icon">📥</div>
+    <div class="upload-card-num">Archivo 1 · Holded</div>
+    <div class="upload-card-title">Export de Nóminas</div>
+    <div class="upload-card-desc">Listado mensual exportado desde Holded con los importes por empleado (salario, SS, retención, neto).</div>
+    <div class="upload-card-filename" id="fn-holded">Haz clic o arrastra aquí</div>
+  </div>
+
+  <div class="upload-card" id="card-payfit" onclick="document.getElementById('file-payfit').click()">
+    <input type="file" accept=".xlsx,.xls" id="file-payfit" onchange="handleFile('payfit', this)">
+    <div class="upload-icon">📊</div>
+    <div class="upload-card-num">Archivo 2 · Payfit</div>
+    <div class="upload-card-title">Informe de Contabilidad</div>
+    <div class="upload-card-desc">Informe contable de Payfit con el desglose por empleado y cuenta contable (640, 641, 642, 476, 4751...).</div>
+    <div class="upload-card-filename" id="fn-payfit">Haz clic o arrastra aquí</div>
+  </div>
+
+  <div class="upload-card" id="card-diario" onclick="document.getElementById('file-diario').click()">
+    <input type="file" accept=".xlsx,.xls" id="file-diario" onchange="handleFile('diario', this)">
+    <div class="upload-icon">📖</div>
+    <div class="upload-card-num">Archivo 3 · Holded</div>
+    <div class="upload-card-title">Libro Diario</div>
+    <div class="upload-card-desc">Libro diario del mes exportado desde Holded. Se usará para extraer los asientos contabilizados de nóminas.</div>
+    <div class="upload-card-filename" id="fn-diario">Haz clic o arrastra aquí</div>
+  </div>
+</div>
+
+<button class="run-btn" id="runBtn" onclick="runAudit()" disabled>
+  Ejecutar Auditoría
+</button>
+
+<div class="loading" id="loading">Procesando archivos<span class="loading-dot">...</span></div>
+
+<div class="results" id="results"></div>
+
+<script>
+const state = { holded: null, payfit: null, diario: null };
+
+function loadFile(key, file) {
+  document.getElementById('fn-' + key).textContent = file.name;
+  document.getElementById('card-' + key).classList.add('loaded');
+  const reader = new FileReader();
+  reader.onload = e => {
+    const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+    state[key] = wb;
+    checkReady();
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function handleFile(key, input) {
+  const file = input.files[0];
+  if (!file) return;
+  loadFile(key, file);
+}
+
+// Drag & Drop
+[['card-holded','holded'],['card-payfit','payfit'],['card-diario','diario']].forEach(([id, key]) => {
+  const card = document.getElementById(id);
+  card.addEventListener('dragover', e => { e.preventDefault(); e.stopPropagation(); card.classList.add('drag-over'); });
+  card.addEventListener('dragleave', e => { e.preventDefault(); card.classList.remove('drag-over'); });
+  card.addEventListener('drop', e => {
+    e.preventDefault(); e.stopPropagation();
+    card.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) loadFile(key, file);
+  });
+});
+
+function checkReady() {
+  const ready = state.holded && state.payfit && state.diario;
+  document.getElementById('runBtn').disabled = !ready;
+}
+
+function fmt(n) {
+  if (n == null || isNaN(n)) return '—';
+  return new Intl.NumberFormat('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n) + ' €';
+}
+
+function diff(a, b) {
+  return Math.round((a - b) * 100) / 100;
+}
+
+function absDiff(a, b) {
+  return Math.abs(Math.round((a - b) * 100) / 100);
+}
+
+function diffBadge(a, b, threshold = 1) {
+  const d = diff(a, b);
+  if (Math.abs(d) <= threshold) return `<span class="badge badge-ok">✓ Cuadra</span>`;
+  return `<span class="badge badge-err">✗ Diff: ${fmt(d)}</span>`;
+}
+
+function parseHolded(wb) {
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+  const employees = [];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    if (r[1] && typeof r[3] === 'number') {
+      employees.push({
+        nombre: r[1],
+        salario: r[3] || 0,
+        ss_total: r[4] || 0,       // negativo (descuento trabajador)
+        ss_empresa: r[5] || 0,      // positivo (cargo empresa = 642)
+        retencion: r[6] || 0,       // negativo (IRPF)
+        coste_empresa: r[7] || 0,
+        a_pagar: r[8] || 0,
+      });
+    }
+  }
+  return employees;
+}
+
+function parsePayfit(wb) {
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+  if (rows.length < 2) return { employees: [], totals: {} };
+
+  const headers = rows[0];
+  const employees = [];
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (!r[0]) continue;
+    const emp = { nombre: r[0] };
+    headers.forEach((h, j) => {
+      if (h && j > 0) emp[h] = r[j] || 0;
+    });
+    employees.push(emp);
+  }
+
+  // totales
+  const totals = {};
+  headers.forEach((h, j) => {
+    if (!h || j === 0) return;
+    totals[h] = employees.reduce((s, e) => s + (e[h] || 0), 0);
+  });
+
+  return { employees, totals, headers: headers.slice(1) };
+}
+
+function parseDiario(wb) {
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
+
+  const nomCuentas = ['640', '6400', '6401', '641', '642', '476', '4651', '4650', '4751', '46500', '47510'];
+  const result = {};
+  const cuentasNames = {};
+
+  for (let i = 5; i < rows.length; i++) {
+    const r = rows[i];
+    const cuenta = r[6] != null ? String(r[6]) : '';
+    const nombre = r[7] ? String(r[7]) : '';
+    const debe = typeof r[8] === 'number' ? r[8] : 0;
+    const haber = typeof r[9] === 'number' ? r[9] : 0;
+
+    if (nomCuentas.some(c => cuenta.startsWith(c))) {
+      const key = cuenta;
+      if (!result[key]) result[key] = { debe: 0, haber: 0 };
+      result[key].debe += debe;
+      result[key].haber += haber;
+      if (!cuentasNames[key]) cuentasNames[key] = nombre;
+    }
+  }
+
+  return { cuentas: result, nombres: cuentasNames };
+}
+
+function getPayfitKey(col) {
+  const match = col.match(/^(\d+)/);
+  return match ? match[1] : col;
+}
+
+function runAudit() {
+  document.getElementById('loading').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+
+  setTimeout(() => {
+    try {
+      const holded = parseHolded(state.holded);
+      const payfit = parsePayfit(state.payfit);
+      const diario = parseDiario(state.diario);
+
+      // Totales Holded
+      const H = {
+        salario: holded.reduce((s,e) => s + e.salario, 0),
+        ss_empresa: holded.reduce((s,e) => s + e.ss_empresa, 0),
+        retencion: holded.reduce((s,e) => s + Math.abs(e.retencion), 0),
+        ss_trabajador: holded.reduce((s,e) => s + Math.abs(e.ss_total), 0),
+        a_pagar: holded.reduce((s,e) => s + e.a_pagar, 0),
+        coste: holded.reduce((s,e) => s + e.coste_empresa, 0),
+      };
+
+      // Totales Payfit por cuenta
+      const P = payfit.totals;
+      const get = (prefix) => {
+        const key = Object.keys(P).find(k => k.startsWith(prefix));
+        return key ? P[key] : 0;
+      };
+
+      const P640 = get('640') + get('6400') + get('6401') + get('641');
+      const P642 = get('642');
+      const P476 = get('476');
+      const P4751 = get('4751');
+      const P4650 = get('4650') + get('465');
+
+      // Libro diario
+      const D = diario.cuentas;
+      const getDiario = (prefix) => {
+        const key = Object.keys(D).find(k => k.startsWith(prefix));
+        return key ? D[key] : { debe: 0, haber: 0 };
+      };
+
+      // Detectar periodo desde Holded
+      const sheet0 = state.holded.Sheets[state.holded.SheetNames[0]];
+      const rawRows = XLSX.utils.sheet_to_json(sheet0, { header: 1 });
+      const periodoText = rawRows[1]?.[0] || 'Periodo no detectado';
+
+      // Periodo libro diario
+      const sheetD = state.diario.Sheets[state.diario.SheetNames[0]];
+      const rawD = XLSX.utils.sheet_to_json(sheetD, { header: 1 });
+      const periodoD = rawD[1]?.[0] || '';
+
+      // Construir HTML de resultados
+      let html = `
+        <div class="period-tag">
+          📅 Nóminas: <strong>${periodoText}</strong>
+          &nbsp;&nbsp;|&nbsp;&nbsp;
+          📖 Libro Diario: <strong>${periodoD}</strong>
+        </div>
+
+        <div class="info-box">
+          <strong>Lógica del cruce:</strong> Payfit genera el asiento contable oficial. Holded refleja el mismo movimiento como resumen de gestión.
+          El Libro Diario de Holded debe contener los asientos registrados con las mismas cuentas.
+          Las tres fuentes deben coincidir en los conceptos clave: <strong>SS empresa (642)</strong>, <strong>IRPF retenido (4751)</strong>,
+          <strong>Organismos SS (476)</strong> y <strong>Remuneraciones pendientes (465x)</strong>.
+        </div>
+      `;
+
+      // === CUADRE GLOBAL ===
+      html += `<div class="section-title">Cuadre Global de Totales</div>`;
+      html += `<div class="cuadre-cuentas">`;
+
+      const cuentasCheck = [
+        {
+          cuenta: '640/641',
+          nombre: 'Sueldos, salarios e indemnizaciones',
+          holded_val: H.salario,
+          payfit_val: P640,
+          diario_val: getDiario('640').debe + getDiario('6400').debe + getDiario('6401').debe + getDiario('641').debe,
+          tipo: 'debe'
+        },
+        {
+          cuenta: '642',
+          nombre: 'S.S. a cargo empresa',
+          holded_val: H.ss_empresa,
+          payfit_val: P642,
+          diario_val: getDiario('642').debe,
+          tipo: 'debe'
+        },
+        {
+          cuenta: '476',
+          nombre: 'Organismos S.S. acreedores',
+          holded_val: H.ss_trabajador,
+          payfit_val: P476,
+          diario_val: getDiario('476').haber,
+          tipo: 'haber'
+        },
+        {
+          cuenta: '4751',
+          nombre: 'H.P. acreedor por retenciones (IRPF)',
+          holded_val: H.retencion,
+          payfit_val: P4751,
+          diario_val: getDiario('4751').haber,
+          tipo: 'haber'
+        },
+      ];
+
+      cuentasCheck.forEach(c => {
+        const d1 = diff(c.holded_val, c.payfit_val);
+        const d2 = diff(c.payfit_val, c.diario_val);
+        const ok1 = Math.abs(d1) <= 5;
+        const ok2 = Math.abs(d2) <= 5;
+
+        html += `
+          <div class="cuenta-card">
+            <div class="cuenta-num">${c.cuenta}</div>
+            <div class="cuenta-name">${c.nombre}</div>
+            <div class="cuenta-compare">
+              <div class="cuenta-source">
+                <div class="cuenta-source-label">Holded</div>
+                <div class="cuenta-source-val">${fmt(c.holded_val)}</div>
+              </div>
+              <div class="cuenta-source">
+                <div class="cuenta-source-label">Payfit</div>
+                <div class="cuenta-source-val">${fmt(c.payfit_val)}</div>
+                <div class="cuenta-source-diff ${ok1 ? 'num-ok' : 'num-err'}">
+                  vs Holded: ${ok1 ? '✓' : fmt(d1)}
+                </div>
+              </div>
+              <div class="cuenta-source">
+                <div class="cuenta-source-label">Libro Diario</div>
+                <div class="cuenta-source-val ${c.diario_val === 0 ? 'num-warn' : ''}">${c.diario_val > 0 ? fmt(c.diario_val) : '—'}</div>
+                <div class="cuenta-source-diff ${c.diario_val === 0 ? 'num-warn' : ok2 ? 'num-ok' : 'num-err'}">
+                  ${c.diario_val === 0 ? '⚠ Sin datos' : ok2 ? '✓ OK' : 'vs Payfit: ' + fmt(d2)}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      html += `</div>`;
+
+      // === RESUMEN GLOBAL ===
+      html += `<div class="section-title">Resumen de Totales</div>`;
+      html += `<div class="cuadre-grid">`;
+
+      html += `
+        <div class="cuadre-card">
+          <div class="cuadre-card-label">Holded (Export Nóminas)</div>
+          <div class="cuadre-row"><span class="cuadre-row-label">Salario bruto</span><span class="cuadre-row-val">${fmt(H.salario)}</span></div>
+          <div class="cuadre-row"><span class="cuadre-row-label">SS empresa</span><span class="cuadre-row-val">${fmt(H.ss_empresa)}</span></div>
+          <div class="cuadre-row"><span class="cuadre-row-label">SS trabajador</span><span class="cuadre-row-val">${fmt(H.ss_trabajador)}</span></div>
+          <div class="cuadre-row"><span class="cuadre-row-label">IRPF retenido</span><span class="cuadre-row-val">${fmt(H.retencion)}</span></div>
+          <div class="cuadre-row"><span class="cuadre-row-label">Neto a pagar</span><span class="cuadre-row-val">${fmt(H.a_pagar)}</span></div>
+          <div class="cuadre-row"><span class="cuadre-row-label">Coste empresa total</span><span class="cuadre-row-val">${fmt(H.coste)}</span></div>
+        </div>
+
+        <div class="cuadre-card">
+          <div class="cuadre-card-label">Payfit (Informe Contabilidad)</div>
+          ${payfit.headers.map(h => {
+            const v = P[h];
+            if (!v || Math.abs(v) < 0.01) return '';
+            const short = h.split(' - ')[0];
+            return `<div class="cuadre-row"><span class="cuadre-row-label" style="font-size:11px;font-family:var(--mono)">${short}</span><span class="cuadre-row-val">${fmt(v)}</span></div>`;
+          }).join('')}
+        </div>
+
+        <div class="cuadre-card">
+          <div class="cuadre-card-label">Cuadres Holded ↔ Payfit</div>
+          <div class="cuadre-row">
+            <span class="cuadre-row-label">642 SS empresa</span>
+            ${diffBadge(H.ss_empresa, P642)}
+          </div>
+          <div class="cuadre-row">
+            <span class="cuadre-row-label">476 SS trabajador</span>
+            ${diffBadge(H.ss_trabajador, P476)}
+          </div>
+          <div class="cuadre-row">
+            <span class="cuadre-row-label">4751 IRPF</span>
+            ${diffBadge(H.retencion, P4751)}
+          </div>
+          <div class="cuadre-row">
+            <span class="cuadre-row-label">4650 Neto a pagar</span>
+            ${diffBadge(H.a_pagar, P4650)}
+          </div>
+          <div class="cuadre-row">
+            <span class="cuadre-row-label">640/641 Salario bruto</span>
+            ${diffBadge(H.salario, P640)}
+          </div>
+        </div>
+      `;
+      html += `</div>`;
+
+      // === DETALLE POR EMPLEADO PAYFIT ===
+      html += `<div class="section-title">Detalle por Empleado · Payfit</div>`;
+      html += `<table><thead><tr>
+        <th>Empleado</th>
+        <th class="num">6400 Sueldo</th>
+        <th class="num">6401 Especie</th>
+        <th class="num">641 Indemn.</th>
+        <th class="num">642 SS Emp.</th>
+        <th class="num">476 SS Org.</th>
+        <th class="num">4751 IRPF</th>
+        <th class="num">4650 Neto</th>
+      </tr></thead><tbody>`;
+
+      payfit.employees.forEach(e => {
+        const get = (prefix) => {
+          const key = Object.keys(e).find(k => k.startsWith(prefix));
+          return key ? (e[key] || 0) : 0;
+        };
+        const e640 = get('6400') || get('640');
+        const e641 = get('641');
+        const e6401 = get('6401');
+        const e642 = get('642');
+        const e476 = get('476');
+        const e4751 = get('4751');
+        const e4650 = get('4650') || get('465');
+
+        html += `<tr>
+          <td><span class="emp-name">${e.nombre}</span></td>
+          <td class="num">${fmt(e640)}</td>
+          <td class="num">${e6401 ? fmt(e6401) : '<span class="emp-name-small">—</span>'}</td>
+          <td class="num">${e641 ? fmt(e641) : '<span class="emp-name-small">—</span>'}</td>
+          <td class="num">${fmt(e642)}</td>
+          <td class="num">${fmt(e476)}</td>
+          <td class="num">${fmt(e4751)}</td>
+          <td class="num">${fmt(e4650)}</td>
+        </tr>`;
+      });
+
+      html += `</tbody><tfoot><tr>
+        <td>TOTAL</td>
+        <td class="num">${fmt(get_payfit_col(payfit, '6400'))}</td>
+        <td class="num">${fmt(get_payfit_col(payfit, '6401'))}</td>
+        <td class="num">${fmt(get_payfit_col(payfit, '641'))}</td>
+        <td class="num">${fmt(P642)}</td>
+        <td class="num">${fmt(P476)}</td>
+        <td class="num">${fmt(P4751)}</td>
+        <td class="num">${fmt(P4650)}</td>
+      </tr></tfoot></table>`;
+
+      // === CRUCE HOLDED vs PAYFIT por empleado ===
+      html += `<div class="section-title">Cruce por Empleado · Holded vs Payfit</div>`;
+
+      // Intentar cruzar por nombre
+      const matchedRows = [];
+      holded.forEach(h => {
+        // buscar empleado en payfit (nombre parcial)
+        const hNombre = h.nombre.toLowerCase().trim();
+        const pMatch = payfit.employees.find(p => {
+          const pNombre = p.nombre.toLowerCase().trim();
+          const hParts = hNombre.split(' ');
+          return hParts.some(part => part.length > 2 && pNombre.includes(part));
+        });
+
+        let pIRPF = 0, pSS = 0, pBruto = 0, pNeto = 0;
+        if (pMatch) {
+          const getP = (prefix) => {
+            const key = Object.keys(pMatch).find(k => k.startsWith(prefix));
+            return key ? (pMatch[key] || 0) : 0;
+          };
+          pIRPF = getP('4751');
+          pSS = getP('476');
+          pBruto = (getP('6400') || getP('640')) + getP('6401') + getP('641');
+          pNeto = getP('4650') || getP('465');
+        }
+
+        matchedRows.push({
+          hNombre: h.nombre,
+          pNombre: pMatch ? pMatch.nombre : null,
+          hBruto: h.salario,
+          pBruto,
+          hIRPF: Math.abs(h.retencion),
+          pIRPF,
+          hSS: Math.abs(h.ss_total),
+          pSS,
+          hNeto: h.a_pagar,
+          pNeto,
+          matched: !!pMatch
+        });
+      });
+
+      html += `<table><thead><tr>
+        <th>Holded</th>
+        <th>Payfit</th>
+        <th class="num">Bruto H</th>
+        <th class="num">Bruto P</th>
+        <th class="num">IRPF H</th>
+        <th class="num">IRPF P</th>
+        <th class="num">SS trab. H</th>
+        <th class="num">SS trab. P</th>
+        <th class="num">Neto H</th>
+        <th class="num">Neto P</th>
+      </tr></thead><tbody>`;
+
+      matchedRows.forEach(r => {
+        const dBruto = absDiff(r.hBruto, r.pBruto);
+        const dIRPF = absDiff(r.hIRPF, r.pIRPF);
+        const dSS = absDiff(r.hSS, r.pSS);
+        const dNeto = absDiff(r.hNeto, r.pNeto);
+        const anyErr = r.matched && (dBruto > 5 || dIRPF > 5 || dSS > 5 || dNeto > 5);
+
+        html += `<tr>
+          <td><span class="emp-name">${r.hNombre}</span></td>
+          <td>${r.pNombre ? `<span class="emp-name-small">${r.pNombre}</span>` : '<span class="badge badge-warn">Sin match</span>'}</td>
+          <td class="${dBruto > 5 ? 'num num-err' : 'num'}">${fmt(r.hBruto)}</td>
+          <td class="${dBruto > 5 ? 'num num-err' : 'num'}">${r.pBruto ? fmt(r.pBruto) : '—'}</td>
+          <td class="${dIRPF > 5 ? 'num num-err' : 'num'}">${fmt(r.hIRPF)}</td>
+          <td class="${dIRPF > 5 ? 'num num-err' : 'num'}">${r.pIRPF ? fmt(r.pIRPF) : '—'}</td>
+          <td class="${dSS > 5 ? 'num num-err' : 'num'}">${fmt(r.hSS)}</td>
+          <td class="${dSS > 5 ? 'num num-err' : 'num'}">${r.pSS ? fmt(r.pSS) : '—'}</td>
+          <td class="${dNeto > 5 ? 'num num-err' : 'num'}">${fmt(r.hNeto)}</td>
+          <td class="${dNeto > 5 ? 'num num-err' : 'num'}">${r.pNeto ? fmt(r.pNeto) : '—'}</td>
+        </tr>`;
+      });
+
+      html += `</tbody></table>`;
+
+      document.getElementById('loading').style.display = 'none';
+      const resultsDiv = document.getElementById('results');
+      resultsDiv.innerHTML = html;
+      resultsDiv.style.display = 'block';
+
+    } catch(err) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('results').innerHTML = `<div style="color:var(--red);padding:20px;font-family:var(--mono);font-size:13px;">Error al procesar: ${err.message}</div>`;
+      document.getElementById('results').style.display = 'block';
+      console.error(err);
+    }
+  }, 200);
+}
+
+function get_payfit_col(payfit, prefix) {
+  const key = Object.keys(payfit.totals).find(k => k.startsWith(prefix));
+  return key ? payfit.totals[key] : 0;
+}
+</script>
+</body>
+</html>

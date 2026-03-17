@@ -124,7 +124,7 @@
       </div>
       <div class="nav-item" onclick="showPanel('nominas', this)">
         <span class="nav-icon">◎</span> Nóminas
-        <span class="badge">WIP</span>
+        <span class="nav-dot"></span>
       </div>
       <div class="nav-item" onclick="showPanel('tesoreria', this)">
         <span class="nav-icon">◇</span> Tesorería
@@ -195,10 +195,10 @@
           <div class="mc-desc">Control y cuadre de modelos de impuestos: IVA, IRPF y retenciones.</div>
           <span class="mc-arrow">→</span>
         </div>
-        <div class="module-card disabled">
+        <div class="module-card" onclick="showPanelById('nominas')">
           <div class="mc-top">
             <div class="mc-icon">◎</div>
-            <span class="mc-status s-wip">EN PROCESO</span>
+            <span class="mc-status s-ready">ACTIVO</span>
           </div>
           <div class="mc-title">Nóminas</div>
           <div class="mc-desc">Auditoría mensual de nóminas, retenciones IRPF y cotizaciones a la Seguridad Social.</div>
@@ -237,8 +237,8 @@
     </div>
 
     <!-- NOMINAS -->
-    <div class="panel" id="panel-nominas">
-      <div class="coming-soon"><div class="cs-icon">◎</div><span>Módulo en desarrollo</span></div>
+    <div class="panel iframe-panel" id="panel-nominas">
+      <iframe src="auditoria_nominas.html" title="Nóminas"></iframe>
     </div>
 
     <!-- TESORERIA -->
@@ -256,7 +256,7 @@
     recibidas: ['Facturas Recibidas', 'Auditoría · Holded Export'],
     contable:  ['Cuentas Contables',  'Auditoría · Holded Export'],
     impuestos: ['Impuestos',           'Auditoría · Modelos Fiscales'],
-    nominas:   ['Nóminas',            'En desarrollo'],
+    nominas:   ['Nóminas',            'Auditoría · Holded · Payfit'],
     tesoreria: ['Tesorería',          'En desarrollo'],
   };
   function showPanel(id, navEl) {
