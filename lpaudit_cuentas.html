@@ -409,6 +409,25 @@
   }
   .pagination button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
   .pagination button:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  .export-btn {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    background: transparent;
+    border: 1.5px solid var(--ok);
+    color: var(--ok);
+    border-radius: 7px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .export-btn:hover { background: rgba(62,207,142,0.1); }
+  .export-btn.visible { display: flex; }
 </style>
 </head>
 <body>
@@ -417,6 +436,9 @@
   <div class="logo-badge">LPAUDIT</div>
   <h1>Auditoría · Cuentas Contables</h1>
   <span id="period-label">—</span>
+  <button class="export-btn" id="export-btn" onclick="exportToExcel()">
+    <span>⬇</span> Exportar incidencias
+  </button>
 </header>
 
 <div class="upload-section" id="upload-section">
@@ -473,7 +495,136 @@ let rawData = [];
 let analysisResult = null;
 const PAGE_SIZE = 50;
 
-// ─── SECTION SWITCH ────────────────────────────────────────────────────────
+// ─── EXPORT TO EXCEL ───────────────────────────────────────────────────────
+function exportToExcel() {
+  if (!analysisResult) return;
+
+  const wb = XLSX.utils.book_new();
+  const period = document.getElementById('period-label').textContent || 'periodo';
+
+  // Helper: convert issues array to worksheet rows
+  function issuesToRows(check) {
+    if (check.issues.length === 0) return null;
+
+    if (check.isCustom) {
+      // For custom checks, build rows from known fields based on check id
+      const id = check.id;
+
+      if (id === 'a1') {
+        const header = ['Asiento','Fecha','Tipo','Descripción','Debe','Haber','Diferencia','Líneas'];
+        const rows = check.issues.map(r => [r.asiento, r.fecha, r.tipo, r.desc, r.debe, r.haber, r.diff, r.lineas]);
+        return [header, ...rows];
+      }
+      if (id === 'c1' || id === 'c2') {
+        const header = ['Asiento','Fecha','Tipo','Descripción','Cuentas del asiento'];
+        const rows = check.issues.map(r => [r.asiento, r.fecha, r.tipo, r.desc, r.cuentas]);
+        return [header, ...rows];
+      }
+      if (id === 'c3') {
+        const header = ['Asiento','Fecha','Cuenta','Descripción','Tipo IVA','Base (desc.)','IVA esperado','IVA contabilizado','Diferencia'];
+        const rows = check.issues.map(r => [r.asiento, r.fecha, r.cuenta, r.desc, r.tipoPct, r.baseDesc, r.ivaEsperado, r.ivaContab, r.diff]);
+        return [header, ...rows];
+      }
+      if (id === 'd1' || id === 'd2' || id === 'd3') {
+        const header = ['Asiento','Fecha','Proveedor','Cuenta','Importe','Documento','Ocurrencias','Descripción'];
+        const rows = check.issues.map(r => [r.asiento, r.fecha, r.proveedor, r.provCuenta, r.importe, r.doc, r.nGrupo || '', r.desc]);
+        return [header, ...rows];
+      }
+      // fallback: try to serialize object keys
+      if (check.issues.length > 0) {
+        const header = Object.keys(check.issues[0]).filter(k => k !== 'nGrupo' || true);
+        const rows = check.issues.map(r => header.map(k => r[k]));
+        return [header, ...rows];
+      }
+      return null;
+    }
+
+    // Standard checks with cols
+    const header = check.cols.map(c => c.label);
+    const rows = check.issues.map(r => check.cols.map(c => c.fn(r)));
+    return [header, ...rows];
+  }
+
+  // Tab name helper (max 31 chars, no special chars)
+  function sheetName(str) {
+    return str.replace(/[:\\\/\?\*\[\]]/g, '').substring(0, 31);
+  }
+
+  let totalSheets = 0;
+
+  // ── Sección 1: Cuentas Contables ──
+  analysisResult.checks.forEach((check, i) => {
+    const data = issuesToRows(check);
+    if (!data) return;
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    styleSheet(ws, data[0].length);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName(`CC${i+1} ${check.title.substring(0,20)}`));
+    totalSheets++;
+  });
+
+  // ── Sección 2: Auditoría Adicional ──
+  analysisResult.adicional.checks.forEach((check) => {
+    const data = issuesToRows(check);
+    if (!data) return;
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    styleSheet(ws, data[0].length);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName(`AD ${check.title.substring(0,25)}`));
+    totalSheets++;
+  });
+
+  // ── Sección 3: Duplicados Pigeon ──
+  analysisResult.duplicados.checks.forEach((check) => {
+    const data = issuesToRows(check);
+    if (!data) return;
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    styleSheet(ws, data[0].length);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName(`DUP ${check.title.substring(0,24)}`));
+    totalSheets++;
+  });
+
+  // ── Portada resumen ──
+  const now = new Date().toLocaleDateString('es-ES');
+  const allChecks = [
+    ...analysisResult.checks.map(c => ({ seccion: 'Cuentas Contables', ...c })),
+    ...analysisResult.adicional.checks.map(c => ({ seccion: 'Auditoría Adicional', ...c })),
+    ...analysisResult.duplicados.checks.map(c => ({ seccion: 'Facturas Duplicadas', ...c }))
+  ];
+  const resumenData = [
+    ['LPAUDIT — Exportación de incidencias'],
+    [`Período: ${period}`],
+    [`Generado: ${now}`],
+    [],
+    ['Sección', 'Control', 'Incidencias', 'Estado'],
+    ...allChecks.map(c => [
+      c.seccion,
+      c.title,
+      c.issues.length,
+      c.issues.length === 0 ? '✓ OK' : '⚠ Revisar'
+    ]),
+    [],
+    ['Total incidencias', '', allChecks.reduce((s,c) => s + c.issues.length, 0), '']
+  ];
+  const wsResumen = XLSX.utils.aoa_to_sheet(resumenData);
+  wsResumen['!cols'] = [{ wch: 22 }, { wch: 45 }, { wch: 14 }, { wch: 12 }];
+  XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+  // Move resumen to first position
+  wb.SheetNames = ['Resumen', ...wb.SheetNames.filter(n => n !== 'Resumen')];
+
+  if (totalSheets === 0) {
+    alert('¡No hay incidencias que exportar! Todo está limpio ✓');
+    return;
+  }
+
+  const filename = `LPAUDIT_${period.replace(/[\s\/]/g, '_')}_${now.replace(/\//g,'')}.xlsx`;
+  XLSX.writeFile(wb, filename);
+}
+
+function styleSheet(ws, nCols) {
+  // Set column widths
+  ws['!cols'] = Array(nCols).fill({ wch: 20 });
+  if (ws['!cols'][0]) ws['!cols'][0] = { wch: 10 }; // Asiento
+  if (ws['!cols'][1]) ws['!cols'][1] = { wch: 12 }; // Fecha
+}
 function switchSection(id) {
   const ids = ['s-cuentas', 's-adicional', 's-duplicados'];
   document.querySelectorAll('.section-tab').forEach((t, i) => t.classList.toggle('active', ids[i] === id));
@@ -1026,6 +1177,9 @@ function renderResults(res) {
   renderTabSet('tabs-bar-dup', 'tabs-content-dup', dupChecksArr, 'dup');
   panelState['dup_0'] = { page:0, filter:'' };
   setTimeout(() => renderPage('dup', 0, dupChecksArr), 10);
+
+  // Show export button
+  document.getElementById('export-btn').classList.add('visible');
 }
 
 function getChecksForPrefix(prefix) {
