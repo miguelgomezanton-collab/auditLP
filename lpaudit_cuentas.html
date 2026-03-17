@@ -6,21 +6,21 @@
 <title>LPAUDIT · Cuentas Contables</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
 
   :root {
-    --bg: #06090f;
-    --surface: #0c1220;
-    --surface2: #101828;
-    --border: #162040;
-    --accent: #4a7fd4;
-    --accent2: #2952b3;
+    --bg: #0f0f11;
+    --surface: #17171c;
+    --surface2: #1e1e26;
+    --border: #2a2a36;
+    --accent: #7c6af7;
+    --accent2: #4fc4cf;
     --ok: #3ecf8e;
     --warn: #f5a623;
     --error: #f06464;
     --text: #e8e8f0;
-    --text2: #7888a0;
-    --text3: #3a4a66;
+    --text2: #8888a8;
+    --text3: #55556a;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -28,7 +28,7 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'IBM Plex Sans', sans-serif;
     min-height: 100vh;
     font-size: 14px;
   }
@@ -44,7 +44,7 @@
   .logo-badge {
     background: var(--accent);
     color: #fff;
-    font-family: 'DM Mono', monospace;
+    font-family: 'IBM Plex Mono', monospace;
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.12em;
@@ -61,7 +61,7 @@
     color: var(--text3);
     font-size: 13px;
     margin-left: auto;
-    font-family: 'DM Mono', monospace;
+    font-family: 'IBM Plex Mono', monospace;
   }
 
   /* UPLOAD ZONE */
@@ -118,7 +118,7 @@
     margin-top: 12px;
   }
   .file-loaded .icon { font-size: 20px; }
-  .file-loaded .name { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--ok); }
+  .file-loaded .name { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ok); }
   .file-loaded .rows { font-size: 12px; color: var(--text3); margin-left: auto; }
 
   .run-btn {
@@ -129,7 +129,7 @@
     color: #fff;
     border: none;
     border-radius: 8px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'IBM Plex Sans', sans-serif;
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
@@ -164,7 +164,7 @@
     margin-bottom: 8px;
   }
   .stat-card .value {
-    font-family: 'DM Mono', monospace;
+    font-family: 'IBM Plex Mono', monospace;
     font-size: 26px;
     font-weight: 600;
     line-height: 1;
@@ -232,7 +232,7 @@
     font-weight: 700;
     padding: 2px 7px;
     border-radius: 20px;
-    font-family: 'DM Mono', monospace;
+    font-family: 'IBM Plex Mono', monospace;
   }
   .badge.ok-badge { background: rgba(62,207,142,0.15); color: var(--ok); }
   .badge.error-badge { background: rgba(240,100,100,0.15); color: var(--error); }
@@ -261,7 +261,7 @@
     font-weight: 700;
     padding: 4px 12px;
     border-radius: 6px;
-    font-family: 'DM Mono', monospace;
+    font-family: 'IBM Plex Mono', monospace;
     white-space: nowrap;
     flex-shrink: 0;
     margin-top: 2px;
@@ -304,11 +304,11 @@
     border: none;
     outline: none;
     color: var(--text);
-    font-family: 'DM Mono', monospace;
+    font-family: 'IBM Plex Mono', monospace;
     font-size: 12px;
   }
   .search-bar input::placeholder { color: var(--text3); }
-  .search-count { font-size: 11px; color: var(--text3); white-space: nowrap; font-family: 'DM Mono', monospace; }
+  .search-count { font-size: 11px; color: var(--text3); white-space: nowrap; font-family: 'IBM Plex Mono', monospace; }
 
   table {
     width: 100%;
@@ -339,7 +339,7 @@
     vertical-align: middle;
   }
   tbody td.mono {
-    font-family: 'DM Mono', monospace;
+    font-family: 'IBM Plex Mono', monospace;
     font-size: 11px;
   }
   tbody td.highlight { color: var(--text); font-weight: 500; }
@@ -349,7 +349,7 @@
     font-weight: 700;
     padding: 2px 8px;
     border-radius: 4px;
-    font-family: 'DM Mono', monospace;
+    font-family: 'IBM Plex Mono', monospace;
     white-space: nowrap;
   }
   .chip-error { background: rgba(240,100,100,0.12); color: var(--error); }
@@ -413,7 +413,11 @@
 </head>
 <body>
 
-<div style="background:#0c1220;border-bottom:1px solid #162040;padding:11px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0;width:100%;box-sizing:border-box;"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4a7fd4;font-weight:500;">Cuentas Contables</span><span style="font-family:'DM Mono',monospace;font-size:9px;color:#3a4a66;margin-left:4px;">· Legal Pigeon Auditoría Interna</span></div>
+<header>
+  <div class="logo-badge">LPAUDIT</div>
+  <h1>Auditoría · Cuentas Contables</h1>
+  <span id="period-label">—</span>
+</header>
 
 <div class="upload-section" id="upload-section">
   <label class="upload-label">Libro Diario (Holded)</label>
@@ -437,6 +441,7 @@
     <div class="section-tabs">
       <div class="section-tab active" onclick="switchSection('s-cuentas')">Cuentas Contables</div>
       <div class="section-tab" onclick="switchSection('s-adicional')">Auditoría Adicional</div>
+      <div class="section-tab" onclick="switchSection('s-duplicados')">Facturas Duplicadas Pigeon</div>
     </div>
 
     <div class="section-panel active" id="s-cuentas">
@@ -453,6 +458,13 @@
       <div id="tabs-content-adicional"></div>
     </div>
 
+    <div class="section-panel" id="s-duplicados">
+      <div class="section-title" style="padding: 0 0 8px; margin-bottom: 20px;">Resumen</div>
+      <div class="summary-grid" id="summary-grid-dup"></div>
+      <div class="tabs" id="tabs-bar-dup"></div>
+      <div id="tabs-content-dup"></div>
+    </div>
+
   </div>
 </div>
 
@@ -463,13 +475,9 @@ const PAGE_SIZE = 50;
 
 // ─── SECTION SWITCH ────────────────────────────────────────────────────────
 function switchSection(id) {
-  document.querySelectorAll('.section-tab').forEach((t, i) => {
-    const ids = ['s-cuentas', 's-adicional'];
-    t.classList.toggle('active', ids[i] === id);
-  });
-  document.querySelectorAll('.section-panel').forEach(p => {
-    p.classList.toggle('active', p.id === id);
-  });
+  const ids = ['s-cuentas', 's-adicional', 's-duplicados'];
+  document.querySelectorAll('.section-tab').forEach((t, i) => t.classList.toggle('active', ids[i] === id));
+  document.querySelectorAll('.section-panel').forEach(p => p.classList.toggle('active', p.id === id));
 }
 
 // ─── DROP ZONE ─────────────────────────────────────────────────────────────
@@ -683,9 +691,143 @@ function analyze(data) {
     }
   });
 
+  // ── FACTURAS DUPLICADAS PIGEON ───────────────────────────────────────────
+
+  // Extraer una fila por asiento pigeon: proveedor, importe, fecha, doc
+  const asientosPigeon = Object.keys(asientoMap).filter(a =>
+    asientoMap[a].rows.some(r => getCuenta(r) === '62300001')
+  );
+
+  const pigeonFacturas = asientosPigeon.map(a => {
+    const v = asientoMap[a];
+    const gastoRow = v.rows.find(r => getCuenta(r) === '62300001');
+    const provRow = v.rows.find(r => getCuenta(r).startsWith('400'));
+    if (!gastoRow) return null;
+    const importe = Math.round(getDebe(gastoRow) * 100) / 100;
+    const fechaRaw = gastoRow['Fecha'];
+    const fechaStr = getFecha(gastoRow);
+    // Fecha solo día (sin hora) para comparar
+    const fechaDia = fechaRaw instanceof Date
+      ? fechaRaw.toISOString().split('T')[0]
+      : String(fechaRaw).split('T')[0].split(' ')[0];
+    const doc = String(v.rows[0]['Documento'] || '').trim();
+    return {
+      asiento: a,
+      fecha: fechaStr,
+      fechaDia,
+      provCuenta: provRow ? getCuenta(provRow) : '',
+      proveedor: provRow ? getNombreCuenta(provRow) : '',
+      importe,
+      desc: getDesc(gastoRow),
+      doc
+    };
+  }).filter(Boolean);
+
+  // D1: Mismo proveedor + mismo documento → duplicado casi seguro
+  const dup_d1_grupos = {};
+  pigeonFacturas.forEach(f => {
+    if (!f.doc) return;
+    const k = `${f.provCuenta}||${f.doc}`;
+    if (!dup_d1_grupos[k]) dup_d1_grupos[k] = [];
+    dup_d1_grupos[k].push(f);
+  });
+  const dup_d1 = Object.values(dup_d1_grupos)
+    .filter(g => g.length > 1)
+    .map(g => g.map((f, i) => ({ ...f, grupo: i === 0 ? '🔴 Duplicado' : '🔴 Duplicado', nGrupo: g.length })))
+    .flat();
+
+  // D2: Mismo proveedor + mismo importe + misma fecha → muy sospechoso
+  const dup_d2_grupos = {};
+  pigeonFacturas.forEach(f => {
+    const k = `${f.provCuenta}||${f.importe}||${f.fechaDia}`;
+    if (!dup_d2_grupos[k]) dup_d2_grupos[k] = [];
+    dup_d2_grupos[k].push(f);
+  });
+  // Excluir los que ya están en D1
+  const d1AsientoSet = new Set(dup_d1.map(f => f.asiento));
+  const dup_d2 = Object.values(dup_d2_grupos)
+    .filter(g => g.length > 1 && !g.every(f => d1AsientoSet.has(f.asiento)))
+    .map(g => g.map(f => ({ ...f, nGrupo: g.length })))
+    .flat()
+    .filter(f => !d1AsientoSet.has(f.asiento));
+
+  // D3: Mismo proveedor + mismo importe + distinta fecha → posible (trabajo diferente, revisar)
+  const dup_d3_grupos = {};
+  pigeonFacturas.forEach(f => {
+    const k = `${f.provCuenta}||${f.importe}`;
+    if (!dup_d3_grupos[k]) dup_d3_grupos[k] = [];
+    dup_d3_grupos[k].push(f);
+  });
+  const d2AsientoSet = new Set(dup_d2.map(f => f.asiento));
+  const dup_d3 = Object.values(dup_d3_grupos)
+    .filter(g => {
+      if (g.length < 2) return false;
+      const fechas = [...new Set(g.map(f => f.fechaDia))];
+      return fechas.length > 1; // distintas fechas
+    })
+    .map(g => g.map(f => ({ ...f, nGrupo: g.length })))
+    .flat()
+    .filter(f => !d1AsientoSet.has(f.asiento) && !d2AsientoSet.has(f.asiento));
+
+  const dupChecks = [
+    {
+      id: 'd1',
+      title: 'Mismo proveedor + mismo documento',
+      desc: 'La combinación proveedor + número de documento debería ser única. Estos casos son duplicados casi seguros que hay que investigar y anular.',
+      issues: dup_d1,
+      isCustom: true,
+      renderRow: f => `<tr style="background:rgba(240,100,100,0.04)">
+        <td class="mono">${f.asiento}</td>
+        <td>${f.fecha}</td>
+        <td class="highlight">${f.proveedor}</td>
+        <td class="mono">${f.provCuenta}</td>
+        <td class="mono" style="color:var(--error);font-weight:600">${fmtEur(f.importe)}</td>
+        <td class="mono" style="color:var(--error)">${f.doc}</td>
+        <td style="color:var(--text3);font-size:11px">${f.desc.substring(0,50)}${f.desc.length>50?'…':''}</td>
+      </tr>`,
+      headers: ['Asiento','Fecha','Proveedor','Cuenta','Importe','Documento','Descripción']
+    },
+    {
+      id: 'd2',
+      title: 'Mismo proveedor + mismo importe + misma fecha',
+      desc: 'Mismo proveedor, mismo importe y misma fecha de contabilización pero documentos distintos. Alta probabilidad de duplicado — verificar si son dos trabajos distintos o la misma factura registrada dos veces.',
+      issues: dup_d2,
+      isCustom: true,
+      renderRow: f => `<tr style="background:rgba(245,166,35,0.03)">
+        <td class="mono">${f.asiento}</td>
+        <td>${f.fecha}</td>
+        <td class="highlight">${f.proveedor}</td>
+        <td class="mono">${f.provCuenta}</td>
+        <td class="mono" style="color:var(--warn);font-weight:600">${fmtEur(f.importe)}</td>
+        <td class="mono">${f.doc}</td>
+        <td style="color:var(--text3);font-size:11px">${f.desc.substring(0,50)}${f.desc.length>50?'…':''}</td>
+      </tr>`,
+      headers: ['Asiento','Fecha','Proveedor','Cuenta','Importe','Documento','Descripción']
+    },
+    {
+      id: 'd3',
+      title: 'Mismo proveedor + mismo importe + distinta fecha',
+      desc: 'Mismo proveedor e importe pero contabilizadas en fechas distintas. Probablemente son encargos legítimos a tarifa fija, pero conviene revisar cuando el importe es elevado o hay muchas repeticiones.',
+      issues: dup_d3,
+      isCustom: true,
+      renderRow: f => `<tr>
+        <td class="mono">${f.asiento}</td>
+        <td>${f.fecha}</td>
+        <td class="highlight">${f.proveedor}</td>
+        <td class="mono">${f.provCuenta}</td>
+        <td class="mono" style="color:var(--text2)">${fmtEur(f.importe)}</td>
+        <td class="mono">${f.doc}</td>
+        <td class="mono" style="color:var(--text3)">${f.nGrupo} ocurrencias</td>
+        <td style="color:var(--text3);font-size:11px">${f.desc.substring(0,50)}${f.desc.length>50?'…':''}</td>
+      </tr>`,
+      headers: ['Asiento','Fecha','Proveedor','Cuenta','Importe','Documento','Ocurrencias','Descripción']
+    }
+  ];
+
   return {
     totalLineas: rows.length,
     totalAsientos: Object.keys(asientoMap).length,
+    totalPigeonFacturas: pigeonFacturas.length,
     checks: [
       {
         id:'c1', title:'Proveedores en cuenta genérica 400',
@@ -831,6 +973,9 @@ function analyze(data) {
           headers: ['Asiento','Fecha','Cuenta','Descripción','Tipo IVA','Base (desc.)','IVA esperado','IVA contabilizado','Diferencia']
         }
       ]
+    },
+    duplicados: {
+      checks: dupChecks
     }
   };
 }
@@ -865,10 +1010,29 @@ function renderResults(res) {
   panelState['cc_0'] = { page:0, filter:'' };
   setTimeout(() => renderPage('cc', 0, res.checks), 10);
 
-  // Render tabs — Adicional
-  renderTabSet('tabs-bar-adicional', 'tabs-content-adicional', addChecks, 'ad');
-  panelState['ad_0'] = { page:0, filter:'' };
-  setTimeout(() => renderPage('ad', 0, addChecks), 10);
+  // Summary duplicados
+  const dupChecksArr = res.duplicados.checks;
+  const totalDupIssues = dupChecksArr.reduce((s,c) => s + c.issues.length, 0);
+  const dupD1 = dupChecksArr[0].issues.length;
+  const dupD2 = dupChecksArr[1].issues.length;
+  document.getElementById('summary-grid-dup').innerHTML = `
+    <div class="stat-card"><div class="label">Facturas Pigeon</div><div class="value neutral">${res.totalPigeonFacturas.toLocaleString('es')}</div><div class="sub">en este período</div></div>
+    <div class="stat-card"><div class="label">Duplicados seguros</div><div class="value ${dupD1===0?'ok':'error'}">${dupD1}</div><div class="sub">mismo doc + proveedor</div></div>
+    <div class="stat-card"><div class="label">Alta sospecha</div><div class="value ${dupD2===0?'ok':'warn'}">${dupD2}</div><div class="sub">mismo importe + fecha</div></div>
+    <div class="stat-card"><div class="label">Total a revisar</div><div class="value ${totalDupIssues===0?'ok':'warn'}">${totalDupIssues}</div><div class="sub">registros señalados</div></div>
+  `;
+
+  // Render tabs — Duplicados
+  renderTabSet('tabs-bar-dup', 'tabs-content-dup', dupChecksArr, 'dup');
+  panelState['dup_0'] = { page:0, filter:'' };
+  setTimeout(() => renderPage('dup', 0, dupChecksArr), 10);
+}
+
+function getChecksForPrefix(prefix) {
+  if (prefix==='cc') return analysisResult.checks;
+  if (prefix==='ad') return analysisResult.adicional.checks;
+  if (prefix==='dup') return analysisResult.duplicados.checks;
+  return [];
 }
 
 function renderTabSet(barId, contentId, checks, prefix) {
@@ -879,20 +1043,23 @@ function renderTabSet(barId, contentId, checks, prefix) {
   const labels = {
     'a1':'Cuadre contable','a2':'Asiento 1 línea',
     'b1':'Tesorería 572',
-    'c1':prefix==='ad'?'Compras sin gasto':'C1',
-    'c2':prefix==='ad'?'Facturas sin ingreso':'C2',
-    'c3':prefix==='ad'?'IVA vs base':'C3'
+    'c1': prefix==='ad' ? 'Compras sin gasto' : 'C1',
+    'c2': prefix==='ad' ? 'Facturas sin ingreso' : 'C2',
+    'c3': prefix==='ad' ? 'IVA vs base' : 'C3',
+    'd1':'🔴 Mismo doc','d2':'🟡 Misma fecha','d3':'⚪ Distinta fecha'
   };
 
   checks.forEach((check, idx) => {
     const n = check.issues.length;
-    const badgeClass = n===0?'ok-badge':'error-badge';
-    const label = prefix==='ad' ? (labels[check.id]||check.id) : `C${idx+1} ${check.title.split(' ').slice(0,2).join(' ')}`;
+    const badgeClass = n===0 ? 'ok-badge' : (check.id==='d3' ? 'ok-badge' : 'error-badge');
+    const label = prefix==='cc'
+      ? `C${idx+1} ${check.title.split(' ').slice(0,2).join(' ')}`
+      : (labels[check.id] || check.id);
 
     const tab = document.createElement('div');
     tab.className = 'tab' + (idx===0?' active':'');
     tab.innerHTML = `${label} <span class="badge ${badgeClass}">${n===0?'✓':n}</span>`;
-    tab.onclick = () => switchTab(prefix, idx, checks);
+    tab.onclick = () => switchTab(prefix, idx);
     bar.appendChild(tab);
 
     const panel = document.createElement('div');
@@ -903,13 +1070,14 @@ function renderTabSet(barId, contentId, checks, prefix) {
   });
 }
 
-function switchTab(prefix, idx, checks) {
-  const bar = document.getElementById(prefix==='cc'?'tabs-bar':'tabs-bar-adicional');
+function switchTab(prefix, idx) {
+  const barId = prefix==='cc' ? 'tabs-bar' : prefix==='ad' ? 'tabs-bar-adicional' : 'tabs-bar-dup';
+  const bar = document.getElementById(barId);
   bar.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', i===idx));
   document.querySelectorAll(`[id^="panel-${prefix}-"]`).forEach((p,i) => p.classList.toggle('active', i===idx));
   if (!panelState[`${prefix}_${idx}`]) {
     panelState[`${prefix}_${idx}`] = { page:0, filter:'' };
-    renderPage(prefix, idx, checks);
+    renderPage(prefix, idx, getChecksForPrefix(prefix));
   }
 }
 
@@ -956,15 +1124,13 @@ function filterTable(prefix, idx) {
   if (!panelState[key]) panelState[key] = { page:0, filter:'' };
   panelState[key].filter = document.getElementById(`search-${prefix}-${idx}`).value.toLowerCase();
   panelState[key].page = 0;
-  const checks = prefix==='cc' ? analysisResult.checks : analysisResult.adicional.checks;
-  renderPage(prefix, idx, checks);
+  renderPage(prefix, idx, getChecksForPrefix(prefix));
 }
 
 function changePage(prefix, idx, dir) {
   const key = `${prefix}_${idx}`;
   panelState[key].page += dir;
-  const checks = prefix==='cc' ? analysisResult.checks : analysisResult.adicional.checks;
-  renderPage(prefix, idx, checks);
+  renderPage(prefix, idx, getChecksForPrefix(prefix));
 }
 
 function renderPage(prefix, idx, checks) {
