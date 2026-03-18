@@ -213,7 +213,7 @@
 </div>
 
 <div class="container">
-  <div style="background:#0c1220;border-bottom:1px solid #162040;padding:11px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0;width:100%;box-sizing:border-box;"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4a7fd4;font-weight:500;">Facturas Recibidas</span><span style="font-family:'DM Mono',monospace;font-size:9px;color:#3a4a66;margin-left:4px;">· Legal Pigeon Auditoría Interna</span></div>
+  <div style="background:#0c1220;border-bottom:1px solid #162040;padding:11px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0;width:100%;box-sizing:border-box;"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4a7fd4;font-weight:500;">Facturas Recibidas</span><span style="font-family:'DM Mono',monospace;font-size:9px;color:#3a4a66;margin-left:4px;">· Legal Pigeon Auditoría Interna</span><button onclick="exportarIncidenciasExcel()" style="margin-left:auto;padding:7px 16px;background:#1e3a8a;border:1px solid #2952b3;border-radius:6px;color:#8ab0e8;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;cursor:pointer;transition:background 0.2s;white-space:nowrap;" onmouseover="this.style.background='#2952b3'" onmouseout="this.style.background='#1e3a8a'">⬇ Exportar incidencias</button></div>
 
   <div id="upload-section">
     <div class="steps-grid">
@@ -533,6 +533,7 @@ function estadoBadge(e) {
 
 // ── Render ────────────────────────────────────────────────────────────
 function renderResults(fileName, total, personasDesc, sinIVA, debeIRPF, noDebeIRPF) {
+  window._lastSinIVA_R = sinIVA; window._lastDebeIRPF = debeIRPF; window._lastNoDebeIRPF = noDebeIRPF;
   document.getElementById('upload-section').style.display = 'none';
   document.getElementById('results').style.display = 'block';
   document.getElementById('fi-name').textContent = fileName;
@@ -639,6 +640,28 @@ function resetApp() {
   document.getElementById('input-facturas').value = '';
   document.getElementById('run-btn').disabled = true;
 }
+
+function exportarIncidenciasExcel() {
+  if (!window._lastSinIVA_R && !window._lastDebeIRPF && !window._lastNoDebeIRPF) {
+    alert('Primero analiza un archivo para poder exportar.');
+    return;
+  }
+  const wb = XLSX.utils.book_new();
+  const cols = ['Fecha','Nº Factura','Proveedor','Motivo','Subtotal','IVA','Retención','Total','Estado'];
+
+  const makeSheet = (arr) => {
+    const rows = [cols];
+    arr.forEach(r => rows.push([r.fecha||'', r.num||'', r.proveedor||'', r.irpfReason||'', r.subtotal, r.iva, r.retencion||0, r.total, r.estado||'']));
+    return XLSX.utils.aoa_to_sheet(rows);
+  };
+
+  XLSX.utils.book_append_sheet(wb, makeSheet(window._lastSinIVA_R || []),    'Sin IVA');
+  XLSX.utils.book_append_sheet(wb, makeSheet(window._lastDebeIRPF || []),    'Sin IRPF (deben)');
+  XLSX.utils.book_append_sheet(wb, makeSheet(window._lastNoDebeIRPF || []), 'Con IRPF (no deben)');
+
+  XLSX.writeFile(wb, 'LP_Incidencias_Recibidas.xlsx');
+}
+
 </script>
 </body>
 </html>

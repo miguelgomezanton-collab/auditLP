@@ -351,7 +351,7 @@
 </head>
 <body>
 
-<div style="background:#0c1220;border-bottom:1px solid #162040;padding:11px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0;width:100%;box-sizing:border-box;position:sticky;top:0;z-index:100;"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4a7fd4;font-weight:500;">Nóminas</span><span style="font-family:'DM Mono',monospace;font-size:9px;color:#3a4a66;margin-left:4px;">· Legal Pigeon Auditoría Interna</span></div>
+<div style="background:#0c1220;border-bottom:1px solid #162040;padding:11px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0;width:100%;box-sizing:border-box;position:sticky;top:0;z-index:100;"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4a7fd4;font-weight:500;">Nóminas</span><span style="font-family:'DM Mono',monospace;font-size:9px;color:#3a4a66;margin-left:4px;">· Legal Pigeon Auditoría Interna</span><button onclick="exportarIncidenciasExcel()" style="margin-left:auto;padding:7px 16px;background:#1e3a8a;border:1px solid #2952b3;border-radius:6px;color:#8ab0e8;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;cursor:pointer;transition:background 0.2s;white-space:nowrap;" onmouseover="this.style.background='#2952b3'" onmouseout="this.style.background='#1e3a8a'">⬇ Exportar incidencias</button></div>
   <div>
     <div class="header-title">LP Audit · Nóminas</div>
   </div>
@@ -738,7 +738,7 @@ function runAudit() {
         <th class="num">4650 Neto</th>
       </tr></thead><tbody>`;
 
-      payfit.employees.forEach(e => {
+      window._nominasResult = window._nominasResult || {}; window._nominasResult.employees = payfit.employees; payfit.employees.forEach(e => {
         const get = (prefix) => {
           const key = Object.keys(e).find(k => k.startsWith(prefix));
           return key ? (e[key] || 0) : 0;
@@ -869,6 +869,34 @@ function get_payfit_col(payfit, prefix) {
   const key = Object.keys(payfit.totals).find(k => k.startsWith(prefix));
   return key ? payfit.totals[key] : 0;
 }
+
+function exportarIncidenciasExcel() {
+  if (!window._nominasResult) {
+    alert('Primero ejecuta la auditoría para poder exportar.');
+    return;
+  }
+  const r = window._nominasResult;
+  const wb = XLSX.utils.book_new();
+  const fmt2 = n => n ? parseFloat(n.toFixed(2)) : 0;
+
+  // Hoja 1: Cuadre por empleado
+  const empData = [['Empleado','6400 Sueldo','6401 Especie','641 Indemn.','642 SS Emp.','476 SS Org.','4751 IRPF','4650 Neto']];
+  (r.employees || []).forEach(e => {
+    const get = (prefix) => { const key = Object.keys(e).find(k => k.startsWith(prefix)); return key ? (e[key]||0) : 0; };
+    empData.push([e.nombre||'', fmt2(get('6400')||get('640')), fmt2(get('6401')), fmt2(get('641')), fmt2(get('642')), fmt2(get('476')), fmt2(get('4751')), fmt2(get('4650')||get('465'))]);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(empData), 'Detalle Empleados');
+
+  // Hoja 2: Diferencias Holded vs Payfit
+  if (r.diffs && r.diffs.length) {
+    const diffData = [['Empleado','Concepto','Holded','Payfit','Diferencia']];
+    r.diffs.forEach(d => diffData.push([d.nombre||'', d.concepto||'', fmt2(d.holded), fmt2(d.payfit), fmt2(d.diff)]));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(diffData), 'Diferencias H vs P');
+  }
+
+  XLSX.writeFile(wb, 'LP_Incidencias_Nominas.xlsx');
+}
+
 </script>
 </body>
 </html>

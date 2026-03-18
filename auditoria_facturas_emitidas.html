@@ -448,7 +448,7 @@
 </head>
 <body>
 
-<div style="background:#0c1220;border-bottom:1px solid #162040;padding:11px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0;width:100%;box-sizing:border-box;"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4a7fd4;font-weight:500;">Facturas Emitidas</span><span style="font-family:'DM Mono',monospace;font-size:9px;color:#3a4a66;margin-left:4px;">· Legal Pigeon Auditoría Interna</span></div>
+<div style="background:#0c1220;border-bottom:1px solid #162040;padding:11px 24px;display:flex;align-items:center;gap:12px;flex-shrink:0;width:100%;box-sizing:border-box;"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4a7fd4;font-weight:500;">Facturas Emitidas</span><span style="font-family:'DM Mono',monospace;font-size:9px;color:#3a4a66;margin-left:4px;">· Legal Pigeon Auditoría Interna</span><button onclick="exportarIncidenciasExcel()" style="margin-left:auto;padding:7px 16px;background:#1e3a8a;border:1px solid #2952b3;border-radius:6px;color:#8ab0e8;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;cursor:pointer;transition:background 0.2s;white-space:nowrap;" onmouseover="this.style.background='#2952b3'" onmouseout="this.style.background='#1e3a8a'">⬇ Exportar incidencias</button></div>
     <div class="header-title">Auditoría Interna · <span>Facturas Emitidas</span></div>
   </div>
 </div>
@@ -645,11 +645,11 @@ function renderApp() {
 // ─── RESUMEN ─────────────────────────────────────────────────────
 function renderResumen(facturas) {
   const series = [...new Set(facturas.map(f => f.serie).filter(Boolean))];
-  const sinIVA = facturas.filter(f => f.iva === 0 && f.subtotal !== 0);
-  const conRet = facturas.filter(f => f.retencion !== 0);
+  const sinIVA = facturas.filter(f => f.iva === 0 && f.subtotal !== 0); window._lastSinIVA = sinIVA;
+  const conRet = facturas.filter(f => f.retencion !== 0); window._lastConRet = conRet;
 
   // Calcular saltos
-  let totalSaltos = 0;
+  window._lastGaps = []; let totalSaltos = 0;
   const seriesData = buildSeriesData(facturas);
   for (const s of Object.values(seriesData)) { totalSaltos += s.gaps.length; }
 
@@ -768,7 +768,7 @@ function buildSeriesData(facturas) {
       const prev = nums[i - 1];
       const curr = nums[i];
       if (curr - prev > 1) {
-        data.gaps.push({ from: prev, to: curr, missing: curr - prev - 1 });
+        const _g = { serie: serie, from: prev, to: curr, missing: curr - prev - 1 }; gaps.push(_g); window._lastGaps.push(_g);
       }
     }
 
@@ -876,7 +876,7 @@ function toggleSerie(id) {
 
 // ─── IVA ─────────────────────────────────────────────────────────
 function renderIVA(facturas) {
-  const sinIVA = facturas.filter(f => f.iva === 0 && f.subtotal !== 0);
+  const sinIVA = facturas.filter(f => f.iva === 0 && f.subtotal !== 0); window._lastSinIVA = sinIVA;
   const container = document.getElementById('sin-iva-table');
   const count = document.getElementById('sin-iva-count');
   count.textContent = `${sinIVA.length} facturas`;
@@ -915,7 +915,7 @@ function renderIVA(facturas) {
 
 // ─── IRPF ─────────────────────────────────────────────────────────
 function renderIRPF(facturas) {
-  const conRet = facturas.filter(f => f.retencion !== 0);
+  const conRet = facturas.filter(f => f.retencion !== 0); window._lastConRet = conRet;
   const container = document.getElementById('con-retencion-table');
   const count = document.getElementById('con-retencion-count');
   count.textContent = `${conRet.length} facturas`;
@@ -970,6 +970,32 @@ function resetApp() {
   document.getElementById('file-input').value = '';
   switchTab('resumen');
 }
+
+function exportarIncidenciasExcel() {
+  if (!window._lastSinIVA && !window._lastConRet && !window._lastGaps) {
+    alert('Primero analiza un archivo para poder exportar.');
+    return;
+  }
+  const wb = XLSX.utils.book_new();
+
+  // Hoja 1: IVA = 0
+  const ivaData = [['Nº Factura','Fecha','Cliente','Descripción','Subtotal','IVA','Total','Estado']];
+  (window._lastSinIVA || []).forEach(r => ivaData.push([r.num||'',r.fecha||'',r.cliente||'',r.desc||'',r.subtotal,r.iva,r.total,r.estado||'']));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(ivaData), 'Sin IVA');
+
+  // Hoja 2: Con retención
+  const retData = [['Nº Factura','Fecha','Cliente','Descripción','Subtotal','IVA','Retención','Total','Estado']];
+  (window._lastConRet || []).forEach(r => retData.push([r.num||'',r.fecha||'',r.cliente||'',r.desc||'',r.subtotal,r.iva,r.retencion,r.total,r.estado||'']));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(retData), 'Con Retención');
+
+  // Hoja 3: Saltos de numeración
+  const gapData = [['Serie','Desde','Hasta','Números faltantes']];
+  (window._lastGaps || []).forEach(g => gapData.push([g.serie||'',g.from,g.to,g.missing]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(gapData), 'Saltos Numeración');
+
+  XLSX.writeFile(wb, 'LP_Incidencias_Emitidas.xlsx');
+}
+
 </script>
 </body>
 </html>
