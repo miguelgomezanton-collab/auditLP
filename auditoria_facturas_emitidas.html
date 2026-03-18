@@ -649,7 +649,7 @@ function renderResumen(facturas) {
   const conRet = facturas.filter(f => f.retencion !== 0); window._lastConRet = conRet;
 
   // Calcular saltos
-  window._lastGaps = []; let totalSaltos = 0;
+  let totalSaltos = 0;
   const seriesData = buildSeriesData(facturas);
   for (const s of Object.values(seriesData)) { totalSaltos += s.gaps.length; }
 
@@ -751,6 +751,7 @@ function renderResumen(facturas) {
 
 // ─── NUMERACIÓN ───────────────────────────────────────────────────
 function buildSeriesData(facturas) {
+  window._lastGaps = [];
   const seriesMap = {};
   for (const f of facturas) {
     if (!f.serie) continue;
@@ -768,7 +769,7 @@ function buildSeriesData(facturas) {
       const prev = nums[i - 1];
       const curr = nums[i];
       if (curr - prev > 1) {
-        const _g = { serie: serie, from: prev, to: curr, missing: curr - prev - 1 }; gaps.push(_g); window._lastGaps.push(_g);
+        const _g = { serie: serie, from: prev, to: curr, missing: curr - prev - 1 }; data.gaps.push(_g); window._lastGaps.push(_g);
       }
     }
 
